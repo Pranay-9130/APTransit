@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Same origin API (docs/06, Basics): the browser calls /api/v1 on the web origin and Next
 // forwards it to the NestJS API. This keeps the refresh cookie first party.
@@ -15,4 +16,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+export default withNextIntl(nextConfig);

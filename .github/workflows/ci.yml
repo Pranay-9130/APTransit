@@ -38,6 +38,9 @@ jobs:
       - name: No em or en dashes
         run: pnpm check:dashes
 
+      - name: Check i18n messages
+        run: pnpm i18n:check
+
       - name: Lint
         run: pnpm turbo lint
 

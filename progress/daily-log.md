@@ -4,6 +4,82 @@ Newest day on top. Each dev adds their own block at the end of every day using `
 
 Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this week), **S3** polish (known issues list).
 
+## Day 03 · 2026-09-25 · Dev B
+
+**Done**
+- `packages/shared`:
+  - `src/schemas/auth.ts`: Zod schemas for `OtpRequestInput`, `OtpVerifyInput`, `MeDto`, `UpdateMeInput` with E.164 phone validation (+91 standard) and trimmed lower case email. Unit tests in `src/schemas/auth.test.ts`.
+- `apps/api`:
+  - `common/pipes/zod-validation.pipe.ts`: Body, query, and param validation with `@aptransit/shared` schemas returning `VALIDATION_FAILED` (400) with detailed error field details.
+  - Decorators: `@CurrentUser()`, `@Can(permission)` using permissions matrix, `@Audit(action)`.
+  - Guards and services: Global `JwtAuthGuard` supporting `@Public()` and permission enforcement via `Reflector`, `ScopeService` (`assertDepotAccess`, `assertDistrictAccess`), `RateLimitService` with Redis backing and headers, `AuditService` writing `AuditLog` rows.
+  - `ResendEmailProvider` with logging for `.test` domains and phone channel.
+  - `POST /auth/otp/request`: Generates 6-digit code, SHA-256 hashed with `OTP_PEPPER`, 5-minute expiry, dev code echoing when non-production.
+  - `POST /auth/otp/verify`: Constant-time comparison, 5-attempt limit with 15-minute Redis target lockout (`otp:lock:{target}`), creates citizen user if new, issues 15-minute access token (jose HS256) and 30-day refresh token in HTTP-only `apt_rt` cookie.
+  - `POST /auth/refresh`: Token rotation with family tracking; detects reuse of revoked tokens and revokes entire family with `auth.refresh_reuse_detected` audit log.
+  - `POST /auth/logout`: Revokes refresh token family and clears `apt_rt` cookie.
+  - `GET /me` and `PATCH /me`: User profile fetch with phone masking and profile update (name, preferredLocale).
+  - 39 API unit and integration tests passing (`test/auth.test.ts`, scope service, env, trip generator, health).
+
+**Merged PRs**
+- `b/auth`
+
+**Carry over (starts tomorrow before the new prompt)**
+- Wire login and registration frontend UI into API on Day 4.
+
+**Contract changes (packages/shared)**
+- Added: `OtpRequestInputSchema`, `OtpVerifyInputSchema`, `MeDtoSchema`, `UpdateMeInputSchema` in `packages/shared/src/schemas/auth.ts`.
+
+**Bugs found** (id, severity S1 to S3, one line)
+- none
+
+**Blockers or questions for the other dev**
+- none
+
+**Decisions needed (also added to decisions-log.md)**
+- none
+
+## Day 03 · 2026-09-25 · Dev A
+
+**Done**
+- `packages/shared`:
+  - `src/messages/en.json` and `te.json`: Added `notifications.*` and `email.*` i18n message keys.
+- `scripts`:
+  - `scripts/check-i18n.mjs`: Node.js script verifying key parity across web and shared, non-empty values, no em or en dashes, and ICU syntax validation. Unit tests in `scripts/check-i18n.test.mjs`. Wired into CI and root `pnpm i18n:check`.
+- `apps/web`:
+  - `next-intl` configuration in `apps/web/i18n/request.ts` with cookie-based locale (`en` and `te`, default `en`), merging web and shared messages.
+  - Root layout: Server-side cookie reading for `locale` and `theme` (no flash on load), `data-locale`, `data-theme`, taller Telugu line height token on `html` when `te`.
+  - `LanguageSwitch` component: Switcher displaying "English" and "తెలుగు", sets cookie and triggers refresh.
+  - `ThemeSwitch` component: Toggle using `useSyncExternalStore` and mutation observer, sets `theme` cookie and updates `data-theme`.
+  - App shells for all 6 surfaces per docs/03 and docs/11:
+    - `(citizen)`: Top bar with wordmark, nav links, language and theme toggles, mobile bottom navigation with active indicators and aria-current, skip link.
+    - `driver`: Focused full-screen layout with large display typography, high-contrast status badge, large touch target buttons (56 px).
+    - `conductor`: Full-screen layout with passenger count stats and large scan QR button.
+    - `ops`: Depot operations dashboard layout with management sidebar and KPI metrics.
+    - `gov`: State command center layout with management sidebar, statewide scope selector, and KPI metrics.
+    - `admin`: System administration layout with management sidebar and administrative service cards.
+  - Component gallery at `/design`: Comprehensive development showcase displaying all 12 UI primitive groups, states, side-by-side theme toggle, language toggle, and status badge grid.
+  - Friendly `not-found.tsx` and `error.tsx` handling with `EmptyState`, `ErrorState`, and localized actions.
+  - Metadata title template in each layout adhering to `{Page} · AP TransitOS`.
+
+**Merged PRs**
+- `a/shells-i18n`
+
+**Carry over (starts tomorrow before the new prompt)**
+- Build citizen home screen, route search, and booking flow on Day 4.
+
+**Contract changes (packages/shared)**
+- Added: `packages/shared/src/messages/en.json` and `te.json`.
+
+**Bugs found** (id, severity S1 to S3, one line)
+- none
+
+**Blockers or questions for the other dev**
+- none
+
+**Decisions needed (also added to decisions-log.md)**
+- none
+
 ## Day 02 · 2026-09-24 · Dev B
 
 **Done**

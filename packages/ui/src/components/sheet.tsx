@@ -31,7 +31,7 @@ export const SheetOverlay = React.forwardRef<
     {...props}
   />
 ));
-SheetOverlay.displayName = DrawerPrimitive.Overlay.displayName;
+SheetOverlay.displayName = "SheetOverlay";
 
 export interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> {
@@ -108,7 +108,7 @@ export const SheetTitle = React.forwardRef<
     {...props}
   />
 ));
-SheetTitle.displayName = DrawerPrimitive.Title.displayName;
+SheetTitle.displayName = "SheetTitle";
 
 export const SheetDescription = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Description>,
@@ -120,4 +120,4 @@ export const SheetDescription = React.forwardRef<
     {...props}
   />
 ));
-SheetDescription.displayName = DrawerPrimitive.Description.displayName;
+SheetDescription.displayName = "SheetDescription";

@@ -14,7 +14,7 @@ Read order for a new session:
 
 ---
 
-## Current state (end of Day 2, 2026-09-24)
+## Current state (end of Day 3, 2026-09-25)
 
 ### Git
 
@@ -23,16 +23,19 @@ Read order for a new session:
 | `main` | Day 1 code | Baseline |
 | `b/schema-v1` | Schema v1, shared additions, deterministic seed, trip generator | Ready / merged |
 | `a/ui-primitives` | 12 UI primitive groups, test setup, showcase page | Ready / merged |
+| `b/auth` | Backend auth, JWT, OTP, refresh rotation, guards, rate limits, audit | Ready / merged |
+| `a/shells-i18n` | 6 app shells, next-intl, Telugu line height, /design gallery, error/404 | Ready / merged |
 
-**Day 3 starts from `main`:** branch `a/<topic>` or `b/<topic>` for citizen web shell, booking and search screens, and auth endpoints.
+**Day 4 starts from `main`:** branch `a/<topic>` or `b/<topic>` for citizen search and booking flow, network lookup APIs.
 
 ### Works today (verified)
 
-- `pnpm install`, `pnpm lint` (includes `check:dashes`), `pnpm typecheck`, `pnpm test`, `pnpm build` all pass on Windows with Node 22.20 and pnpm 11.10.
+- `pnpm install`, `pnpm lint` (includes `check:dashes`), `pnpm i18n:check`, `pnpm typecheck`, `pnpm test`, `pnpm build` all pass on Windows with Node 22.20 and pnpm 11.10.
+- `packages/shared`: `schemas/auth.ts` (OtpRequestInput, OtpVerifyInput, MeDto, UpdateMeInput), `messages/en.json` and `te.json`, `codes.ts`, `polyline.ts`, `time.ts`, `permissions.ts`, `seat-layout.ts`. 46 tests passing.
 - `packages/ui`: all 12 primitive groups exist (Button, IconButton, Field, Input, Textarea, Select, Checkbox, RadioGroup, Switch, Card, StatusBadge, ToneChip, Skeleton, Spinner, EmptyState, ErrorState, Dialog, Sheet, Toaster, Tabs, Tooltip, DropdownMenu) styled exclusively with design tokens, forwardRef, full accessibility, with 10 unit tests passing.
-- `apps/web`: token and primitives showcase on temporary page at `/` verifying all components and states at 360 px and 1280 px, light and dark.
-- `packages/shared`: `codes.ts` (Crockford base32), `polyline.ts` (Google encoded polyline algorithm), `time.ts` (IST time helpers and night departure handling), `permissions.ts` (role-permission matrix and `can` helper), `seat-layout.ts` (Zod schema). 41 tests passing.
-- `apps/api`: full Prisma schema v1 matching docs/05, migration `20260924000000_schema_v1`, trip generator with 5 tests, deterministic AP network seed with docs/19 data, safe reset script, 23 tests passing.
+- `apps/web`: layout shells for all 6 surfaces ((citizen), driver, conductor, ops, gov, admin) with skip links and landmarks, next-intl with cookie-based locale (en, te) and Telugu line height, cookie-based theme without flash, `/design` component gallery, not-found and error handling, 8 routes compiling cleanly in production build.
+- `apps/api`: full Prisma schema v1, auth module (OTP request, verify, refresh rotation, reuse detection, logout, /me, /me update), ZodValidationPipe, JwtAuthGuard with @Public and @Can, ScopeService, RateLimitService, AuditService, ResendEmailProvider. 39 tests passing (2 integration tests skipped when Neon is offline).
+- `scripts`: `check-dashes.mjs` and `check-i18n.mjs` with 5 unit tests passing.
 
 ### Not done yet (blocked on accounts or scheduled later)
 
@@ -40,13 +43,12 @@ Read order for a new session:
 | --- | --- | --- |
 | Neon, Upstash, Razorpay test, Resend accounts | Must be created by a human (docs/15) | Needed for live deployment and e2e |
 | `apps/api/.env`, `apps/web/.env.local` | Need credentials from cloud accounts | Before live testing |
-| Apply `schema_v1` on Neon test branch | Needs `TEST_DATABASE_URL` in CI | Day 2/3 CI setup |
-| Token check page at `/` | Temporary | Move to `/design` on Day 3 (Dev A) |
-| Citizen shell and search | Scheduled for Day 3 | Day 3 (Dev A) |
-| Auth endpoints and session | Scheduled for Day 3 | Day 3 (Dev B) |
+| Apply `schema_v1` on Neon test branch | Needs `TEST_DATABASE_URL` in CI | CI setup with cloud secrets |
+| Citizen search and booking UI | Scheduled for Day 4 | Day 4 (Dev A) |
+| Search and network APIs | Scheduled for Day 4 | Day 4 (Dev B) |
 | Worker queues | Scheduled for Day 5 | Day 5 (Dev B) |
 
-### Decisions taken on Day 1 and Day 2
+### Decisions taken on Day 1, Day 2, and Day 3
 
 All in `progress/decisions-log.md`: D-001 to D-011.
 
