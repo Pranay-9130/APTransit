@@ -20,10 +20,9 @@ Read order for a new session:
 
 | Branch | Contains | Status |
 | --- | --- | --- |
-| `main` | Day 1 to Day 3 (PR #1 day-2, PR #2 day-3) | Baseline |
-| working tree on `main` | Day 3 review fixes (see `progress/daily-log.md`, "Day 03 review") | Commit on a branch and merge by PR before Day 4 branches start |
+| `main` | Day 1 to Day 3 (PR #1 day-2, PR #2 day-3) plus the Day 3 review fixes (`bf95d63`, pushed directly at the owner's request; see `progress/daily-log.md`, "Day 03 review") | Baseline |
 
-**Day 4 starts from `main` after the review fixes are merged:** `a/home-login` (Dev A), `b/network-search` (Dev B).
+**Day 4 starts from `main`:** `a/home-login` (Dev A), `b/network-search` (Dev B). Agree D-016 first (the web route guard cannot see `apt_rt`).
 
 ### Works today (verified 2026-09-27)
 
