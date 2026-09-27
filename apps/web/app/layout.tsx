@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Telugu } from "next/font/google";
+import { cookies } from "next/headers";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -16,11 +19,26 @@ export const metadata: Metadata = {
   description: "One connected public transport platform for Andhra Pradesh.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  // lang and data-theme come from cookies on Day 3 (docs/adr/005-i18n.md).
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("theme")?.value;
+  const dataTheme = theme === "dark" || theme === "light" ? theme : undefined;
+
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className={`${inter.variable} ${notoSansTelugu.variable}`}>
-      <body>{children}</body>
+    <html
+      lang={locale}
+      data-locale={locale}
+      data-theme={dataTheme}
+      className={`${inter.variable} ${notoSansTelugu.variable}`}
+    >
+      <body>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }

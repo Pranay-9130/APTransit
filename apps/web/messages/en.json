@@ -1,0 +1,192 @@
+{
+  "common": {
+    "appName": "AP TransitOS",
+    "from": "From",
+    "to": "To",
+    "date": "Date",
+    "busStand": "Bus stand",
+    "departure": "Departure",
+    "arrival": "Arrival",
+    "seat": "Seat",
+    "seatsLeft": "{count, plural, one {# seat left} other {# seats left}}",
+    "fare": "Fare",
+    "boardingPoint": "Boarding point",
+    "destination": "Destination",
+    "nextStop": "Next stop",
+    "language": "Language",
+    "notifications": "Notifications",
+    "depot": "Depot",
+    "district": "District",
+    "state": "State",
+    "scope": "Scope",
+    "retry": "Retry",
+    "goHome": "Go home",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "home": {
+    "question": "Where do you want to go?",
+    "placeholderTitle": "Home screen arrives on Day 4",
+    "placeholderDescription": "Search routes, timetables, and live bus tracking will be available soon."
+  },
+  "search": {
+    "cta": "Search buses"
+  },
+  "nav": {
+    "home": "Home",
+    "track": "Track bus",
+    "tickets": "My tickets",
+    "passes": "My passes",
+    "timetable": "Timetable",
+    "updates": "Updates",
+    "account": "Account",
+    "login": "Log in",
+    "logout": "Log out",
+    "skipToContent": "Skip to main content",
+    "buses": "Fleet",
+    "trips": "Trips",
+    "incidents": "Incidents",
+    "staff": "Staff",
+    "complaints": "Complaints",
+    "commandCenter": "Command Center",
+    "analytics": "Analytics",
+    "reports": "Reports",
+    "routes": "Routes",
+    "stops": "Stops",
+    "timetables": "Timetables",
+    "users": "Users",
+    "policies": "Policies",
+    "audit": "Audit"
+  },
+  "ticket": {
+    "actions": {
+      "book": "Book ticket",
+      "activate": "Activate ticket",
+      "gift": "Gift ticket",
+      "cancel": "Cancel ticket"
+    }
+  },
+  "pass": {
+    "weekly": "Weekly pass",
+    "monthly": "Monthly pass",
+    "timeLeft": "Time left"
+  },
+  "freeTravel": {
+    "title": "Free travel"
+  },
+  "payment": {
+    "pay": "Pay"
+  },
+  "refund": {
+    "title": "Refund"
+  },
+  "feedback": {
+    "title": "Feedback"
+  },
+  "driver": {
+    "startTrip": "Start trip",
+    "endTrip": "End trip",
+    "reportIssue": "Report issue"
+  },
+  "conductor": {
+    "scan": "Scan ticket"
+  },
+  "scan": {
+    "valid": "VALID",
+    "invalid": "INVALID",
+    "reasons": {
+      "OK": "Passenger verified",
+      "NOT_ACTIVATED": "INVALID: not activated",
+      "ALREADY_SCANNED": "INVALID: already checked",
+      "EXPIRED": "INVALID: expired",
+      "CANCELLED": "INVALID: cancelled",
+      "WRONG_TRIP": "INVALID: wrong bus",
+      "WRONG_DATE": "INVALID: wrong date",
+      "STALE_CODE": "INVALID: old QR code",
+      "BAD_SIGNATURE": "INVALID: not recognised",
+      "NOT_FOUND": "INVALID: not recognised",
+      "SERVICE_NOT_ELIGIBLE": "INVALID: not valid on this bus"
+    }
+  },
+  "auth": {
+    "login": "Log in",
+    "enterOtp": "Enter the 6 digit code"
+  },
+  "status": {
+    "UPCOMING": "Upcoming",
+    "RUNNING": "Running",
+    "DELAYED": "Delayed",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled",
+    "INCIDENT": "Incident",
+    "BREAKDOWN": "Breakdown",
+    "MAINTENANCE": "Maintenance",
+    "NOT_ASSIGNED": "Not assigned"
+  },
+  "ticketStatus": {
+    "BOOKED": "Not active",
+    "ACTIVE": "Active",
+    "SCANNED": "Checked",
+    "USED": "Used",
+    "EXPIRED": "Expired",
+    "REFUNDED": "Refunded",
+    "CANCELLED": "Cancelled"
+  },
+  "serviceType": {
+    "PALLEVELUGU": "Pallevelugu",
+    "ULTRA_PALLEVELUGU": "Ultra Pallevelugu",
+    "CITY_ORDINARY": "City Ordinary",
+    "METRO_EXPRESS": "Metro Express",
+    "EXPRESS": "Express",
+    "ULTRA_DELUXE": "Ultra Deluxe",
+    "SUPER_LUXURY": "Super Luxury",
+    "INDRA_AC": "Indra AC",
+    "AMARAVATI_AC": "Amaravati AC",
+    "GARUDA_AC": "Garuda AC"
+  },
+  "errors": {
+    "VALIDATION_FAILED": "Please check your inputs and try again.",
+    "UNAUTHENTICATED": "Please log in to continue.",
+    "FORBIDDEN": "You do not have permission to access this.",
+    "NOT_FOUND": "We could not find what you were looking for.",
+    "RATE_LIMITED": "Too many tries. Wait a minute and try again.",
+    "OTP_INVALID": "That code is not right. Check the latest code and try again.",
+    "OTP_EXPIRED": "That code has expired. Send a new code.",
+    "OTP_TOO_MANY_ATTEMPTS": "Too many invalid attempts. Try again in 15 minutes.",
+    "SEAT_TAKEN": "Seat {seat} was just booked by someone else. Pick another seat.",
+    "HOLD_EXPIRED": "Your seat hold ended. Pick your seat again to continue.",
+    "BOOKING_NOT_PAYABLE": "This booking can no longer be paid for.",
+    "PAYMENT_SIGNATURE_INVALID": "We could not confirm your payment. You have not been charged twice. Try again.",
+    "PAYMENT_AMOUNT_MISMATCH": "Payment amount mismatch. Please try again.",
+    "ACTIVATION_WINDOW_CLOSED": "You can activate this ticket from {time}.",
+    "TICKET_NOT_ACTIVATABLE": "This ticket cannot be activated yet.",
+    "TICKET_ALREADY_ACTIVE": "This ticket is already active.",
+    "TICKET_NOT_CANCELLABLE": "This ticket cannot be cancelled.",
+    "TICKET_NOT_GIFTABLE": "This ticket cannot be gifted. Free, active or used tickets stay with you.",
+    "RECIPIENT_NOT_FOUND": "No account uses that phone or email. Ask them to sign up first.",
+    "GIFT_TO_SELF": "You cannot gift a ticket to yourself.",
+    "PASS_NOT_ELIGIBLE": "You are not eligible for this pass.",
+    "PASS_ALREADY_ACTIVE": "You already have an active pass of this type.",
+    "ELIGIBILITY_REQUIRED": "Eligibility verification is required first.",
+    "DEVICE_NOT_APPROVED": "This device is pending approval.",
+    "TRIP_NOT_ASSIGNED": "You are not assigned to this trip.",
+    "TRIP_NOT_STARTABLE": "This trip cannot be started yet.",
+    "BUS_NOT_AVAILABLE": "Selected bus is not available.",
+    "NETWORK": "You are offline. Your tickets still open. We will retry when you are back online.",
+    "INTERNAL": "Something went wrong on our side. Try again in a moment."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "We could not find the page you were looking for."
+  },
+  "error": {
+    "title": "Something went wrong",
+    "description": "An unexpected error occurred. Please try again."
+  },
+  "design": {
+    "title": "Design System Gallery",
+    "description": "Token and primitive components showcase for development."
+  }
+}

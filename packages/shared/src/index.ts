@@ -8,3 +8,4 @@ export * from "./time";
 export * from "./permissions";
 export * from "./schemas/health";
 export * from "./schemas/seat-layout";
+export * from "./schemas/auth";

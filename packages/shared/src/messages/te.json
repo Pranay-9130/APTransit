@@ -1,0 +1,58 @@
+{
+  "notifications": {
+    "BOOKING_CONFIRMED": {
+      "title": "టికెట్ బుక్ అయింది",
+      "body": "{date} న {time} కి {route}. సీటు {seat}."
+    },
+    "TICKET_ACTIVATED": {
+      "title": "టికెట్ యాక్టివేట్ అయింది",
+      "body": "కండక్టర్‌కు క్యూఆర్ కోడ్‌ను చూపించండి."
+    },
+    "TICKET_RECEIVED": {
+      "title": "మీకు ఒక టికెట్ వచ్చింది",
+      "body": "{sender} మీకు {route} కోసం టికెట్ పంపారు."
+    },
+    "TRIP_DEPARTED": {
+      "title": "బస్సు బయలుదేరింది",
+      "body": "{route} బస్సు {stop} నుండి {time} కి బయలుదేరింది."
+    },
+    "TRIP_DELAYED": {
+      "title": "బస్సు ఆలస్యం అయింది",
+      "body": "{minutes} నిమిషాలు ఆలస్యంగా నడుస్తోంది. కొత్త రాక సమయం {time}."
+    },
+    "BUS_NEAR_STOP": {
+      "title": "బస్సు మీ స్టాప్ సమీపంలో ఉంది",
+      "body": "సుమారు {minutes} నిమిషాల్లో {stop} చేరుకుంటుంది."
+    },
+    "TRIP_CANCELLED": {
+      "title": "ప్రయాణం రద్దయింది",
+      "body": "{date} న {route} ప్రయాణం రద్దయింది. పూర్తి రీఫండ్ ప్రారంభమైంది."
+    },
+    "REPLACEMENT_BUS": {
+      "title": "బస్సు మారింది",
+      "body": "మీ ప్రయాణం ఇప్పుడు {busNo} లో నడుస్తుంది. అదే సమయం, అదే సీటు."
+    },
+    "ROUTE_UPDATE": {
+      "title": "రూట్ అప్‌డేట్",
+      "body": "{message}"
+    },
+    "PASS_EXPIRING": {
+      "title": "పాస్ త్వరలో ముగుస్తుంది",
+      "body": "మీ {passName} {when} ముగుస్తుంది."
+    },
+    "COMPLAINT_UPDATE": {
+      "title": "ఫిర్యాదు {code} అప్‌డేట్ అయింది",
+      "body": "స్థితి: {status}."
+    }
+  },
+  "email": {
+    "otp": {
+      "subject": "మీ AP TransitOS లాగిన్ కోడ్",
+      "body": "మీ లాగిన్ కోడ్ {code}. ఇది 5 నిమిషాలు మాత్రమే చెల్లుతుంది. ఈ కోడ్‌ను ఎవరితోనూ పంచుకోవద్దు."
+    },
+    "booking": {
+      "subject": "మీ AP TransitOS టికెట్: {code}",
+      "body": "{date} న {time} కి {route} కోసం మీ టికెట్ నిర్ధారించబడింది. సీటు: {seat}."
+    }
+  }
+}

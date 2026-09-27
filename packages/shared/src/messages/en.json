@@ -1,0 +1,58 @@
+{
+  "notifications": {
+    "BOOKING_CONFIRMED": {
+      "title": "Ticket booked",
+      "body": "{route}, {date} at {time}. Seat {seat}."
+    },
+    "TICKET_ACTIVATED": {
+      "title": "Ticket activated",
+      "body": "Show the QR code to the conductor."
+    },
+    "TICKET_RECEIVED": {
+      "title": "You received a ticket",
+      "body": "{sender} sent you a ticket for {route}."
+    },
+    "TRIP_DEPARTED": {
+      "title": "Bus departed",
+      "body": "{route} left {stop} at {time}."
+    },
+    "TRIP_DELAYED": {
+      "title": "Bus delayed",
+      "body": "Running {minutes} min late. New arrival {time}."
+    },
+    "BUS_NEAR_STOP": {
+      "title": "Bus is near your stop",
+      "body": "Arriving at {stop} in about {minutes} min."
+    },
+    "TRIP_CANCELLED": {
+      "title": "Trip cancelled",
+      "body": "{route} on {date} is cancelled. Full refund started."
+    },
+    "REPLACEMENT_BUS": {
+      "title": "Bus changed",
+      "body": "Your trip now runs on {busNo}. Same time, same seat."
+    },
+    "ROUTE_UPDATE": {
+      "title": "Route update",
+      "body": "{message}"
+    },
+    "PASS_EXPIRING": {
+      "title": "Pass expiring soon",
+      "body": "Your {passName} ends {when}."
+    },
+    "COMPLAINT_UPDATE": {
+      "title": "Complaint {code} updated",
+      "body": "Status: {status}."
+    }
+  },
+  "email": {
+    "otp": {
+      "subject": "Your AP TransitOS login code",
+      "body": "Your login code is {code}. It is valid for 5 minutes. Never share this code with anyone."
+    },
+    "booking": {
+      "subject": "Your AP TransitOS ticket: {code}",
+      "body": "Your ticket for {route} on {date} at {time} is confirmed. Seat: {seat}."
+    }
+  }
+}
