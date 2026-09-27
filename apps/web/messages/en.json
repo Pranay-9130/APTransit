@@ -24,7 +24,11 @@
     "theme": "Theme",
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "appDescription": "One connected public transport platform for Andhra Pradesh.",
+    "useLightTheme": "Use light theme",
+    "useDarkTheme": "Use dark theme",
+    "notSelected": "Not selected"
   },
   "home": {
     "question": "Where do you want to go?",
@@ -58,7 +62,19 @@
     "timetables": "Timetables",
     "users": "Users",
     "policies": "Policies",
-    "audit": "Audit"
+    "audit": "Audit",
+    "main": "Main navigation",
+    "dashboard": "Dashboard",
+    "overview": "Overview"
+  },
+  "shell": {
+    "ops": "Depot operations",
+    "admin": "Administration",
+    "driver": "Driver",
+    "conductor": "Conductor",
+    "tripCounts": "Trip counts",
+    "comingSoonTitle": "This screen is on its way",
+    "comingSoonHint": "The menu, language and theme already work. The content arrives in a later build."
   },
   "ticket": {
     "actions": {
@@ -187,6 +203,7 @@
   },
   "design": {
     "title": "Design System Gallery",
-    "description": "Token and primitive components showcase for development."
+    "description": "Token and primitive components showcase for development.",
+    "tokens": "Tokens and type scale"
   }
 }

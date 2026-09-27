@@ -1,17 +1,26 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { cn } from "@aptransit/ui";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { writePreferenceCookie } from "../lib/preferences";
+
+// Each language is written in its own script, so it is never translated (docs/09, LanguageSwitch).
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "te", label: "తెలుగు" },
+] as const;
 
 export function LanguageSwitch() {
+  const t = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const switchLocale = (newLocale: "en" | "te") => {
-    if (newLocale === locale) return;
-    document.cookie = `locale=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
+  const switchLocale = (next: (typeof LANGUAGES)[number]["code"]) => {
+    if (next === locale) return;
+    writePreferenceCookie("locale", next);
     startTransition(() => {
       router.refresh();
     });
@@ -20,33 +29,29 @@ export function LanguageSwitch() {
   return (
     <div
       role="group"
-      aria-label="Language selection"
-      className="inline-flex items-center rounded-control bg-surface-raised p-1 border border-subtle"
+      aria-label={t("language")}
+      aria-busy={isPending || undefined}
+      className="inline-flex items-center rounded-md border border-default bg-surface-raised p-0.5"
     >
-      <button
-        type="button"
-        onClick={() => switchLocale("en")}
-        disabled={isPending}
-        className={`px-3 py-1 rounded-sm text-caption font-medium transition-colors ${
-          locale === "en"
-            ? "bg-surface text-text shadow-sm"
-            : "text-muted hover:text-text"
-        }`}
-      >
-        English
-      </button>
-      <button
-        type="button"
-        onClick={() => switchLocale("te")}
-        disabled={isPending}
-        className={`px-3 py-1 rounded-sm text-caption font-medium transition-colors font-telugu ${
-          locale === "te"
-            ? "bg-surface text-text shadow-sm"
-            : "text-muted hover:text-text"
-        }`}
-      >
-        తెలుగు
-      </button>
+      {LANGUAGES.map((language) => {
+        const active = locale === language.code;
+        return (
+          <button
+            key={language.code}
+            type="button"
+            lang={language.code}
+            aria-pressed={active}
+            onClick={() => switchLocale(language.code)}
+            disabled={isPending}
+            className={cn(
+              "inline-flex h-11 min-w-11 items-center justify-center rounded-sm px-2 text-small font-medium transition-colors duration-fast sm:px-3",
+              active ? "bg-primary-soft text-primary" : "text-muted hover:text-fg",
+            )}
+          >
+            {language.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

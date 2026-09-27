@@ -1,7 +1,9 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useSyncExternalStore } from "react";
+import { writePreferenceCookie } from "../lib/preferences";
 
 function subscribe(callback: () => void) {
   const observer = new MutationObserver(() => callback());
@@ -29,21 +31,23 @@ function getServerSnapshot(): "light" | "dark" {
   return "light";
 }
 
+/** Quick light and dark toggle for the top bars. The account page also offers "system". */
 export function ThemeSwitch() {
+  const t = useTranslations("common");
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", nextTheme);
-    document.cookie = `theme=${nextTheme};path=/;max-age=31536000;SameSite=Lax`;
+    writePreferenceCookie("theme", nextTheme);
   };
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-      className="p-2 rounded-control text-muted hover:text-text hover:bg-surface-raised transition-colors focus-visible:outline-none"
+      aria-label={theme === "dark" ? t("useLightTheme") : t("useDarkTheme")}
+      className="inline-flex size-11 items-center justify-center rounded-md text-muted transition-colors duration-fast hover:bg-surface hover:text-fg"
     >
       {theme === "dark" ? (
         <Sun className="size-5" aria-hidden="true" />
@@ -53,4 +57,3 @@ export function ThemeSwitch() {
     </button>
   );
 }
-

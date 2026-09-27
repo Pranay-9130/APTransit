@@ -1,66 +1,63 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { cn } from "@aptransit/ui";
+import { Bus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 export interface NavItem {
   href: string;
   label: string;
-  icon: LucideIcon;
+  /** A rendered icon element (<Bus />). Component functions cannot cross the server to client boundary. */
+  icon: ReactNode;
 }
 
 export interface ManagementSidebarProps {
+  /** Surface name, also the accessible name of the menu. */
   title: string;
   baseHref: string;
   items: NavItem[];
 }
 
+/** docs/09: icons only (collapsed) at md, fixed 248 px with labels at lg. Desktop first shells. */
 export function ManagementSidebar({ title, baseHref, items }: ManagementSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside
-      aria-label={`${title} navigation`}
-      className="hidden md:flex flex-col w-16 lg:w-[248px] shrink-0 bg-surface-raised border-r border-subtle transition-all duration-200"
-    >
-      <div className="h-16 px-4 flex items-center border-b border-subtle">
+    <aside className="hidden w-18 shrink-0 flex-col border-r border-default bg-surface-raised md:flex lg:w-62">
+      <div className="flex h-16 items-center border-b border-default px-4">
         <Link
           href={baseHref}
-          className="text-h3 font-black text-primary tracking-tight truncate hidden lg:block"
+          className="inline-flex min-h-11 min-w-0 items-center gap-2 text-h3 text-primary max-lg:mx-auto"
         >
-          {title}
-        </Link>
-        <Link
-          href={baseHref}
-          className="text-h3 font-black text-primary tracking-tight lg:hidden mx-auto"
-        >
-          APT
+          <Bus className="size-6 shrink-0" aria-hidden="true" />
+          <span className="truncate max-lg:sr-only">{title}</span>
         </Link>
       </div>
 
-      <nav className="flex-1 p-2 lg:p-3 flex flex-col gap-1 overflow-y-auto">
+      <nav aria-label={title} className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {items.map((item) => {
-          const isActive =
+          const active =
             item.href === baseHref
               ? pathname === baseHref
-              : pathname.startsWith(item.href);
-          const Icon = item.icon;
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link
               key={item.href}
               href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-control text-body-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "text-muted hover:text-text hover:bg-surface"
-              }`}
+              aria-current={active ? "page" : undefined}
               title={item.label}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-md px-3 text-small font-medium transition-colors duration-fast max-lg:justify-center",
+                active ? "bg-primary-soft text-primary" : "text-muted hover:bg-surface hover:text-fg",
+              )}
             >
-              <Icon className="size-5 shrink-0 mx-auto lg:mx-0" aria-hidden="true" />
-              <span className="hidden lg:inline truncate">{item.label}</span>
+              <span className="inline-flex shrink-0 [&>svg]:size-5" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span className="truncate max-lg:sr-only">{item.label}</span>
             </Link>
           );
         })}

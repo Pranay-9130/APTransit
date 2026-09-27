@@ -1,5 +1,7 @@
+import { maskEmail } from "@aptransit/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { AppError } from "../../common/errors/app-error";
 import type { Env } from "../../config/env";
 
 export interface EmailProvider {
@@ -15,39 +17,46 @@ export class ResendEmailProvider implements EmailProvider {
   constructor(private readonly config: ConfigService<Env, true>) {}
 
   async sendEmail(to: string, subject: string, body: string): Promise<void> {
-    const isTestDomain = to.toLowerCase().endsWith(".test");
     const appEnv = this.config.get("APP_ENV", { infer: true });
     const nodeEnv = this.config.get("NODE_ENV", { infer: true });
 
-    if (isTestDomain || nodeEnv === "test" || appEnv === "development") {
-      this.logger.log(`[Dev/Test Email] To: ${to} | Subject: ${subject} | Body: ${body}`);
+    // Local development and tests: never call Resend, print the mail (with its code) instead.
+    if (appEnv === "development" || nodeEnv === "test") {
+      this.logger.log(`[Dev email] to ${maskEmail(to)} | ${subject} | ${body}`);
       return;
     }
 
-    const apiKey = this.config.get("RESEND_API_KEY", { infer: true });
-    const from = this.config.get("EMAIL_FROM", { infer: true });
+    // Demo accounts (.test) cannot receive mail. Outside development the body holds a live
+    // code, so it never reaches the logs (docs/12, A09). Use OTP_DEV_ECHO on staging instead.
+    if (to.toLowerCase().endsWith(".test")) {
+      this.logger.log(`Email to a .test address skipped: ${maskEmail(to)}`);
+      return;
+    }
 
+    let response: globalThis.Response;
     try {
-      const response = await fetch("https://api.resend.com/emails", {
+      response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${this.config.get("RESEND_API_KEY", { infer: true })}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from,
+          from: this.config.get("EMAIL_FROM", { infer: true }),
           to: [to],
           subject,
           text: body,
         }),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        this.logger.error(`Resend email delivery failed: ${response.status} ${errorText}`);
-      }
     } catch (err) {
-      this.logger.error("Failed to send email via Resend", err);
+      this.logger.error({ err }, "Resend request failed");
+      throw new AppError("INTERNAL", "Email delivery failed");
+    }
+
+    if (!response.ok) {
+      // Status only: the Resend error body can echo the recipient.
+      this.logger.error(`Resend email delivery failed with status ${response.status}`);
+      throw new AppError("INTERNAL", "Email delivery failed");
     }
   }
 }

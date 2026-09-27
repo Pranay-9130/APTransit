@@ -4,6 +4,40 @@ Newest day on top. Each dev adds their own block at the end of every day using `
 
 Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this week), **S3** polish (known issues list).
 
+## Day 03 review · 2026-09-27 · fixes before Day 4
+
+**Done**
+- Pulled `main` (PR #1 day-2, PR #2 day-3). Install, lint, i18n:check, typecheck, test, build and audit were green, but review and a browser pass found the bugs below. All fixed, all gates green again.
+
+**Bugs found and fixed** (id, severity, one line)
+- R3-01 · S1 · `/ops`, `/gov`, `/admin` crashed at runtime: server layouts passed lucide component functions to the client sidebar. Icons now go as elements.
+- R3-02 · S1 · `packages/ui` Button, IconButton, ErrorState and Radix wrappers had no `"use client"`; Button inside any server page threw ("Event handlers cannot be passed"). Added the directive.
+- R3-03 · S1 · OTP codes reached the logs outside development (SMS log line, email body for .test addresses) with full phone and email. Now development only and masked; staging uses OTP_DEV_ECHO.
+- R3-04 · S2 · One OTP could log in twice with parallel verifies; parallel wrong guesses shared one attempt. Consume and attempts are now atomic, and attempts are capped in the DB even when Redis is down.
+- R3-05 · S2 · Parallel refreshes with one token both rotated. Token claim is atomic (D-012). Failed refresh clears the cookie.
+- R3-06 · S2 · Soft deleted users (`deletedAt`) could log in and refresh.
+- R3-07 · S2 · Refresh cookie was not Secure on staging (D-013).
+- R3-08 · S2 · Rate limit keys could lose their TTL (INCR then EXPIRE) and block forever. One atomic Lua command, TTL re-armed.
+- R3-09 · S2 · Default rate limit (docs/12: 120 per user or IP per minute) was missing; `@nestjs/throttler` was installed but unused. Now global with Redis storage; `@Throttle` tightens per route (needed by Day 4 search).
+- R3-10 · S2 · `@Audit(action)` did nothing. AuditInterceptor now writes the row.
+- R3-11 · S2 · About 20 class names used in Day 2 and Day 3 did not exist in the token theme (`border-border-default`, `text-text`, `rounded-control`, `text-body-sm`, `bg-black/60`...), so borders, text colours, radii and overlays silently fell back. Replaced with real tokens; added `--scrim` (D-014).
+- R3-12 · S2 · Theme switch removed the focus ring; header icons, language buttons and menu items were under 44 px.
+- R3-13 · S2 · Hardcoded English in shells, home, sidebar, aria labels and metadata; fake KPI numbers on ops, gov, admin, driver and conductor. Now i18n keys and an honest placeholder.
+- R3-14 · S3 · `<Link><Button>` nesting on 404 and error pages. Now `Button asChild`.
+- R3-15 · S3 · Accept-Language check was a substring match ("en-IN,te;q=0.1" picked Telugu). Now parsed by q weight.
+- R3-16 · S3 · Nested layout titles doubled the suffix; `/` showed "AP TransitOS · AP TransitOS".
+- R3-17 · S3 · Email targets were not lower cased in the shared schema; generated codes never included 999999.
+
+**Contract changes (packages/shared)**
+- `OtpRequestInput`, `OtpVerifyInput`: target max 254, email lower cased by the schema.
+
+**Blockers or questions for the other dev**
+- D-015: short Telugu label for "Track bus" in the bottom nav.
+- D-016: the web route guard cannot see `apt_rt` (path /api/v1/auth). Needs a marker cookie before Day 4 step 3.
+
+**Decisions needed (also added to decisions-log.md)**
+- D-012 to D-016.
+
 ## Day 03 · 2026-09-25 · Dev B
 
 **Done**

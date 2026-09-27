@@ -35,7 +35,7 @@ export const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
         <div
           ref={ref}
           className={cn(
-            "w-full rounded-lg border border-border-default bg-surface-raised p-4 flex flex-col gap-3",
+            "w-full rounded-lg border border-default bg-surface-raised p-4 flex flex-col gap-3",
             className
           )}
           {...props}

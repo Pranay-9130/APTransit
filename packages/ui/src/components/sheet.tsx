@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { X } from "lucide-react";
@@ -25,7 +27,7 @@ export const SheetOverlay = React.forwardRef<
   <DrawerPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-sheet bg-black/60 backdrop-blur-xs",
+      "fixed inset-0 z-sheet bg-scrim backdrop-blur-xs",
       className
     )}
     {...props}
@@ -48,13 +50,13 @@ export const SheetContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-sheet mt-24 flex max-h-[85vh] flex-col rounded-t-xl border-t border-border-default bg-surface-raised focus-visible:outline-none",
+        "fixed inset-x-0 bottom-0 z-sheet mt-24 flex max-h-[85vh] flex-col rounded-t-xl border-t border-default bg-surface-raised focus-visible:outline-none",
         className
       )}
       {...props}
     >
       {/* Drag handle */}
-      <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-border-strong shrink-0" />
+      <div className="mx-auto my-3 h-1.5 w-12 rounded-full bg-strong shrink-0" />
 
       {!hideCloseButton && (
         <DrawerPrimitive.Close

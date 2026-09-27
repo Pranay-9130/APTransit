@@ -26,7 +26,8 @@ Check it: `http://localhost:4000/api/v1/health` answers 200 with `db: "ok"` and 
 | `db:migrate` | `prisma migrate dev` |
 | `db:deploy` | `prisma migrate deploy` (Render build, docs/17) |
 | `db:studio` | Prisma Studio |
-| `db:seed`, `db:reset` | placeholders until Day 2, they exit 1 |
+| `db:seed` | deterministic AP demo data (`prisma/seed.ts`, docs/19) |
+| `db:reset` | wipes and reseeds; refuses the Neon `main` branch and production |
 
 Run Prisma directly with `pnpm --filter api exec prisma <command>` (not `pnpm --filter api prisma`).
 
@@ -37,12 +38,18 @@ src/
   main.ts                 HTTP entry: NestFactory + configureHttpApp + listen on 0.0.0.0:PORT
   worker.ts               worker entry, requires WORKER=1, BullMQ consumers from Day 5
   http-app.ts             configureHttpApp(app): logger, trust proxy, helmet, CORS, 100 kb JSON, prefix api/v1
-  app.module.ts           Config (zod), Logger (pino), Prisma, Redis, feature modules, global error filter
+  app.module.ts           Config, Logger, Prisma, Redis, Throttler, feature modules, global filter, guards, audit interceptor
   config/env.ts           EnvSchema + validateEnv: the only list of env vars
   common/
     errors/app-error.ts   AppError(code, message, details?) with status from ERROR_HTTP_STATUS
     filters/all-exceptions.filter.ts   every error becomes the docs/06 shape, 5xx hide details
-    decorators/public.decorator.ts     @Public() for routes without login (guard arrives Day 3)
+    decorators/           @Public(), @Can(permission), @CurrentUser(), @Audit(action)
+    guards/jwt-auth.guard.ts           global: Bearer JWT, sets req.user, checks @Can
+    guards/app-throttler.guard.ts      global: 120 per user or IP per minute, @Throttle to tighten
+    interceptors/audit.interceptor.ts  writes the audit row for routes marked @Audit(action)
+    pipes/zod-validation.pipe.ts       new ZodValidationPipe(Schema) on @Body, @Query, @Param
+    services/             ScopeService (depot, district checks), RateLimitService (OTP target limits), redis-window
+    throttler/            Redis storage for @nestjs/throttler (one Lua command per hit, fails open)
     logger.ts             pino params: request ids, redaction list, health requests not logged
   prisma/                 PrismaService (Prisma 7, pg adapter, pooled URL, lazy connect)
   redis/                  RedisService (ioredis, lazy connect, throttled error logs)
@@ -66,7 +73,7 @@ test/
 3. Controllers stay thin: validate, call the service, return a Dto. Business rules live in services or dedicated rule files (docs/07 names them).
 4. Fail with `throw new AppError("CODE", "Plain message", { detail })`. Codes only from `packages/shared/src/errors.ts`.
 5. Inject with value imports (`import { PrismaService } from "../../prisma/prisma.service"`), never `import type`.
-6. Every mutating endpoint: validation, auth, permission, rate limit and audit where docs/12 lists them (the helpers arrive on Day 3).
+6. Every mutating endpoint: validation, auth, permission, rate limit and audit where docs/12 lists them. See "Auth, limits and audit" below.
 
 Minimal controller, copied from health:
 
@@ -85,6 +92,20 @@ export class HealthController {
   }
 }
 ```
+
+## Auth, limits and audit
+
+| Need | Use |
+| --- | --- |
+| No login | `@Public()` on the handler. A valid Bearer token still fills `req.user` |
+| Permission | `@Can("ticket:validate")` (names from `packages/shared/src/permissions.ts`), 403 `FORBIDDEN` |
+| Scope | inject `ScopeService`, call `assertDepotAccess(user, depotId)` or `assertDistrictAccess` in the service |
+| Who is calling | `@CurrentUser() user: AuthenticatedUser` (null on public routes without a token) |
+| Tighter rate limit | `@Throttle({ default: { limit: 60, ttl: 60_000 } })` from `@nestjs/throttler`. Keyed by user id when logged in, else IP |
+| No default limit | `@SkipThrottle()` (health, and auth routes that use `RateLimitService` target limits) |
+| Audit row | `@Audit("booking.create")`: written after success, entity id from the response `id` or `:id`. For before and after snapshots call `AuditService.log` |
+
+Rate limits fail open when Redis is down (a cache outage never blocks traffic). OTP attempts are still capped per code in the database.
 
 ## Tests
 

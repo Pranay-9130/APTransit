@@ -14,43 +14,42 @@ Read order for a new session:
 
 ---
 
-## Current state (end of Day 3, 2026-09-25)
+## Current state (Day 3 reviewed and fixed, 2026-09-27)
 
 ### Git
 
 | Branch | Contains | Status |
 | --- | --- | --- |
-| `main` | Day 1 code | Baseline |
-| `b/schema-v1` | Schema v1, shared additions, deterministic seed, trip generator | Ready / merged |
-| `a/ui-primitives` | 12 UI primitive groups, test setup, showcase page | Ready / merged |
-| `b/auth` | Backend auth, JWT, OTP, refresh rotation, guards, rate limits, audit | Ready / merged |
-| `a/shells-i18n` | 6 app shells, next-intl, Telugu line height, /design gallery, error/404 | Ready / merged |
+| `main` | Day 1 to Day 3 (PR #1 day-2, PR #2 day-3) | Baseline |
+| working tree on `main` | Day 3 review fixes (see `progress/daily-log.md`, "Day 03 review") | Commit on a branch and merge by PR before Day 4 branches start |
 
-**Day 4 starts from `main`:** branch `a/<topic>` or `b/<topic>` for citizen search and booking flow, network lookup APIs.
+**Day 4 starts from `main` after the review fixes are merged:** `a/home-login` (Dev A), `b/network-search` (Dev B).
 
-### Works today (verified)
+### Works today (verified 2026-09-27)
 
-- `pnpm install`, `pnpm lint` (includes `check:dashes`), `pnpm i18n:check`, `pnpm typecheck`, `pnpm test`, `pnpm build` all pass on Windows with Node 22.20 and pnpm 11.10.
-- `packages/shared`: `schemas/auth.ts` (OtpRequestInput, OtpVerifyInput, MeDto, UpdateMeInput), `messages/en.json` and `te.json`, `codes.ts`, `polyline.ts`, `time.ts`, `permissions.ts`, `seat-layout.ts`. 46 tests passing.
-- `packages/ui`: all 12 primitive groups exist (Button, IconButton, Field, Input, Textarea, Select, Checkbox, RadioGroup, Switch, Card, StatusBadge, ToneChip, Skeleton, Spinner, EmptyState, ErrorState, Dialog, Sheet, Toaster, Tabs, Tooltip, DropdownMenu) styled exclusively with design tokens, forwardRef, full accessibility, with 10 unit tests passing.
-- `apps/web`: layout shells for all 6 surfaces ((citizen), driver, conductor, ops, gov, admin) with skip links and landmarks, next-intl with cookie-based locale (en, te) and Telugu line height, cookie-based theme without flash, `/design` component gallery, not-found and error handling, 8 routes compiling cleanly in production build.
-- `apps/api`: full Prisma schema v1, auth module (OTP request, verify, refresh rotation, reuse detection, logout, /me, /me update), ZodValidationPipe, JwtAuthGuard with @Public and @Can, ScopeService, RateLimitService, AuditService, ResendEmailProvider. 39 tests passing (2 integration tests skipped when Neon is offline).
-- `scripts`: `check-dashes.mjs` and `check-i18n.mjs` with 5 unit tests passing.
+- `pnpm install`, `pnpm lint` (includes `check:dashes`), `pnpm i18n:check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm audit --prod --audit-level high` all pass on Windows with Node 22.20 and pnpm 11.10.
+- Tests: shared 47, api 56 (+2 Neon tests skipped without `TEST_DATABASE_URL`), ui 10, scripts 6.
+- `apps/api` auth: OTP request and verify (atomic consume and attempts, 5 attempts then 15 min lock, lock also enforced from the DB when Redis is down), refresh rotation with atomic claim and reuse detection, logout revokes the family, `/me` and `PATCH /me`, soft deleted users refused. Refresh cookie per docs/06 (Secure outside local development), cleared on a failed refresh.
+- `apps/api` platform: global `JwtAuthGuard` (`@Public`, `@Can`), global throttler (120 per user or IP per minute, Redis, `@Throttle` per route, fails open), `RateLimitService` for the OTP target limits, `@Audit(action)` through `AuditInterceptor`, `ScopeService`. OTP codes reach the log only when APP_ENV is development.
+- `apps/web`: six shells render in English and Telugu, light and dark, at 360, 768 and 1280 px with no horizontal scroll (checked in the browser). Skip link, header, nav and main landmarks, 44 px targets, visible focus. Theme and locale from cookies without a flash. `/design` gallery (development only), 404 and error pages. Landing pages of ops, gov, admin, driver and conductor are placeholders (`components/coming-soon.tsx`).
+- `packages/ui`: every class used in `apps/web` and `packages/ui` exists in the token theme (checked against the built CSS). New token `bg-scrim`.
 
 ### Not done yet (blocked on accounts or scheduled later)
 
 | Item | Why | When |
 | --- | --- | --- |
 | Neon, Upstash, Razorpay test, Resend accounts | Must be created by a human (docs/15) | Needed for live deployment and e2e |
-| `apps/api/.env`, `apps/web/.env.local` | Need credentials from cloud accounts | Before live testing |
+| `apps/api/.env`, `apps/web/.env.local` | Need credentials from cloud accounts | Before live testing (Day 4 sync needs the real API) |
 | Apply `schema_v1` on Neon test branch | Needs `TEST_DATABASE_URL` in CI | CI setup with cloud secrets |
-| Citizen search and booking UI | Scheduled for Day 4 | Day 4 (Dev A) |
-| Search and network APIs | Scheduled for Day 4 | Day 4 (Dev B) |
+| Scope switcher and account name in staff shells | Needs the Day 4 session (`useMe`) | Day 4 (Dev A) |
+| Real logout in the account menu | Link to `/` until `AuthProvider.logout()` exists | Day 4 (Dev A) |
+| Short Telugu label for "Track bus" in the bottom nav | Glossary question D-015 | Day 4 sync |
+| Session marker cookie for the web route guard | Question D-016 (`apt_rt` path hides it from pages) | Before Day 4 work |
 | Worker queues | Scheduled for Day 5 | Day 5 (Dev B) |
 
-### Decisions taken on Day 1, Day 2, and Day 3
+### Decisions
 
-All in `progress/decisions-log.md`: D-001 to D-011.
+All in `progress/decisions-log.md`: D-001 to D-011 from Days 1 to 3, D-012 to D-016 proposed by the Day 3 review (D-016 blocks the Day 4 route guard).
 
 ---
 
@@ -87,14 +86,16 @@ apps/api                       NestJS 11
   src/redis/                   RedisService (ioredis, lazy, TLS ready), global module
   src/modules/health/          the reference module: controller, service, tests
   src/generated/prisma/        generated Prisma client (git ignored, created by `pnpm --filter api generate`)
-  prisma/schema.prisma         only the settings table so far
+  prisma/schema.prisma         full schema v1 from docs/05 (seed in prisma/seed.ts)
   prisma/migrations/           20260923000000_init
   test/                        setup-env.ts, test-env.ts, http.test.ts (pipeline), health.int.test.ts (Neon)
 
 apps/web                       Next.js 16 App Router
   app/layout.tsx               fonts (Inter, Noto Sans Telugu), metadata title template
   app/globals.css              Tailwind + tokens + @source for packages/ui
-  app/page.tsx                 temporary token check page (delete Day 3)
+  app/(citizen)/               citizen shell, placeholder home (Day 4 replaces it)
+  app/{driver,conductor,ops,gov,admin}/  staff shells (components/field-shell.tsx, management-shell.tsx)
+  i18n/request.ts              locale from cookie, then Accept-Language; merges web and shared messages
   next.config.ts               /api/v1 rewrite to API_URL, agentRules off, transpilePackages ui
 ```
 
@@ -144,7 +145,7 @@ apps/web                       Next.js 16 App Router
 1. Request and response zod schemas in `packages/shared/src/schemas/<area>.ts`, exported from `src/index.ts`. Names: `<Thing>Input`, `<Thing>Dto`, `<Thing>Query`.
 2. `apps/api/src/modules/<area>/` with `<area>.module.ts`, `<area>.controller.ts`, `<area>.service.ts`, `<area>.service.test.ts`. Register the module in `app.module.ts`.
 3. Business failures: `throw new AppError("SEAT_TAKEN", "Seat 18 is no longer available", { seatNo: "18" })`. Only codes from `packages/shared/src/errors.ts`. Need a new code? Add it there with its HTTP status and add the message to both i18n files (Day 3 onwards).
-4. Public routes get `@Public()` (the global auth guard arrives on Day 3). Everything else will need login by default.
+4. Public routes get `@Public()`. Everything else needs login (global `JwtAuthGuard`). Permissions with `@Can`, limits with `@Throttle`, audit with `@Audit` (see `apps/api/README.md`).
 5. Inject classes with **value imports** (`import { PrismaService } from ...`), not `import type`, or Nest DI breaks. ESLint already knows this (`nestParserOptions`).
 6. Tests: unit tests next to the file; HTTP tests in `apps/api/test/` using `configureHttpApp` like `http.test.ts`, overriding `PrismaService` and `RedisService` when you do not need real ones.
 7. Update `docs/06` only through a decision if the built shape differs.
@@ -177,7 +178,7 @@ The Next lint config includes the React Compiler rules. `setState` directly insi
 
 ---
 
-## Gotchas (all hit on Day 1)
+## Gotchas (Day 1 to Day 3)
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
@@ -195,6 +196,12 @@ The Next lint config includes the React Compiler rules. `setState` directly insi
 | Prisma prints "Update available 8.x" | Prisma 8 is a release candidate | Ignore, we stay on 7 (D-003). `generate` already hides it |
 | CRLF warnings on commit | Global `core.autocrlf` | Harmless: `.gitattributes` stores LF |
 | Neon test skipped in `pnpm test` | No `TEST_DATABASE_URL` | Expected until the secret exists |
+| A class like `text-text`, `rounded-control`, `border-border-default` does nothing, build still green | Tailwind silently skips names that are not in our theme | Use the names in `packages/ui/README.md` (`text-fg`, `rounded-md`, `border-default`). Check rendered styles in the browser |
+| "Functions cannot be passed directly to Client Components" | A server layout passed `icon: Bus` to a client component | Pass `icon: <Bus />` |
+| "Event handlers cannot be passed to Client Component props" | A `packages/ui` component with handlers lacks `"use client"` | Add the directive at the top of the component file |
+| Page title "X · AP TransitOS · AP TransitOS" | Nested layout used `title.default` under the root template | Use `title.absolute` in nested layouts |
+| React Compiler lint: "This value cannot be modified" on `document.cookie` | Writing a global inside a component | Use `lib/preferences.ts` |
+| API test gets 429 unexpectedly | Tests share one IP and the 10 per IP per hour OTP limit | Reset the IP counter in the fake Redis (see `resetIpLimit` in `test/auth.test.ts`) |
 
 ---
 
@@ -238,15 +245,29 @@ pnpm audit --prod --audit-level high
 
 ---
 
-## Day 3 notes
+## Day 3 notes (done, kept for history)
 
-### Dev A (citizen shell and search screens)
-- Move temporary showcase from `apps/web/app/page.tsx` to `apps/web/app/(citizen)/design/page.tsx`.
-- Wire up `next-intl` (English and Telugu) with routing. All UI copy must have keys in `apps/web/messages/en.json` and `te.json`.
-- Build the citizen shell: navigation bar, mobile tab bar, language switcher, offline banner.
-- Build route search and timetable screens using the Day 2 primitives (`Field`, `Input`, `Select`, `Button`, `Card`, `StatusBadge`).
+- Dev A: shells, next-intl with cookie locale, `/design`, 404 and error pages.
+- Dev B: OTP auth, refresh rotation, guards, rate limits, audit.
+- The review on 2026-09-27 fixed the bugs listed in `progress/daily-log.md` ("Day 03 review").
 
-### Dev B (auth and session endpoints)
-- Implement citizen phone OTP authentication flow (`POST /api/v1/auth/otp/request` and `POST /api/v1/auth/otp/verify`).
-- Session management with JWT and Redis blacklist.
-- Role guard and permission guard using `@aptransit/shared` permissions.
+## Day 4 notes
+
+### Dev A (home, login, account)
+
+- **Next 16 renamed `middleware.ts` to `proxy.ts`** (export `proxy`). Read `apps/web/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md` first.
+- **Blocker for the route guard (D-016):** `apt_rt` has `Path=/api/v1/auth` (docs/06), so browsers never send it with `/tickets` or `/ops`. The proxy cannot see it. Agree D-016 at the start of Day 4 (Dev B sets a path `/` marker cookie, Dev A checks that one).
+- Refresh single flight must also work **across tabs** (D-012): a losing tab gets 401. Use `navigator.locks.request("apt-refresh", ...)` around the refresh call, then retry once.
+- Errors: map `error.code` to `t("errors." + code)`. `RATE_LIMITED` comes with `details.retryAfter` (seconds) and a `Retry-After` header.
+- Staff shells already have `AccountMenu` (swap the Log out link for `logout()`), and `ManagementShell` takes a `scope` prop for the switcher.
+- `LanguageSwitch` writes the cookie through `lib/preferences.ts`; add the `PATCH /me` call there when logged in.
+- Server layouts cannot pass component functions to client components (icons as elements). `packages/ui` interactive components are `"use client"`.
+- Citizen top bar hides the theme toggle below `md` (not in docs/11); the account page gets light, dark, system.
+
+### Dev B (network and search APIs)
+
+- Public endpoints: `@Public()` plus `@Throttle({ default: { limit: 60, ttl: 60_000 } })` on `/search/trips` and `/places/search` (docs/12). The throttler counts per user id when a Bearer token is present, else per IP.
+- Query validation: `@Query(new ZodValidationPipe(SearchTripsQuery)) query: SearchTripsQuery`.
+- In memory cache for districts and places (60 s): a plain `Map` with expiry in the service is enough; no Redis.
+- Tests: copy the fake Prisma and Redis pattern from `test/auth.test.ts`. The fake Redis needs `status: "ready"` and `eval` (see the mock) or rate limits fail open silently.
+- Remember `pnpm --filter @aptransit/shared build` after changing shared schemas if the API does not see them.

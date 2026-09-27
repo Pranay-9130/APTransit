@@ -24,6 +24,12 @@ import { RedisService } from "../../redis/redis.service";
 import { AuditService } from "../audit/audit.service";
 import { EMAIL_PROVIDER, type EmailProvider } from "./email.provider";
 
+const OTP_TTL_SEC = 5 * 60;
+const OTP_RESEND_SEC = 30;
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCK_SEC = 15 * 60;
+const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -52,6 +58,16 @@ export class AuthService {
     return createHash("sha256").update(token).digest("hex");
   }
 
+  private normaliseTarget(input: { channel: OtpRequestInput["channel"]; target: string }): string {
+    const target = input.target.trim();
+    return input.channel === "EMAIL" ? target.toLowerCase() : target;
+  }
+
+  /** Codes and targets reach the log only in local development (docs/12, A09). */
+  private get isDevelopment(): boolean {
+    return this.config.get("APP_ENV", { infer: true }) === "development";
+  }
+
   private async generateAccessToken(
     userId: string,
     roles: { role: string; depotId?: string | null; districtId?: string | null }[],
@@ -64,17 +80,7 @@ export class AuthService {
       .sign(this.jwtSecret);
   }
 
-  async requestOtp(
-    input: OtpRequestInput,
-    ip: string,
-    res?: Response,
-  ): Promise<OtpRequestResponse> {
-    const target = input.channel === "EMAIL" ? input.target.toLowerCase() : input.target;
-
-    // Check rate limits
-    await this.rateLimit.assertOtpRequestLimit(target, ip, res);
-
-    // Check 15-minute lock in Redis
+  private async assertNotLocked(target: string): Promise<void> {
     try {
       const isLocked = await this.redis.client.get(`otp:lock:${target}`);
       if (isLocked) {
@@ -85,13 +91,24 @@ export class AuthService {
       }
     } catch (err) {
       if (err instanceof AppError) throw err;
-      // Continue if Redis is unreachable
+      // Redis unreachable: attempts are still capped per code in the database.
     }
+  }
 
-    // Generate 6 digit code
-    const code = String(randomInt(100000, 999999));
+  async requestOtp(
+    input: OtpRequestInput,
+    ip: string,
+    res?: Response,
+  ): Promise<OtpRequestResponse> {
+    const target = this.normaliseTarget(input);
+
+    await this.rateLimit.assertOtpRequestLimit(target, ip, res);
+    await this.assertNotLocked(target);
+
+    // Six digits, leading zeros allowed, uniform over 000000 to 999999.
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     const codeHash = this.hashOtpCode(code);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+    const expiresAt = new Date(Date.now() + OTP_TTL_SEC * 1000);
 
     await this.prisma.otpCode.create({
       data: {
@@ -108,17 +125,20 @@ export class AuthService {
         "Your AP TransitOS login code",
         `Your login code is ${code}. It is valid for 5 minutes. Never share this code with anyone.`,
       );
+    } else if (this.isDevelopment) {
+      // No SMS provider yet (docs/18). Development only: the code goes to the local log.
+      this.logger.log(`[Dev SMS] ${maskPhone(target)} code ${code}`);
     } else {
-      this.logger.log(`[SMS Channel to ${target}] Code: ${code}`);
+      this.logger.warn("SMS OTP requested but no SMS provider is configured");
     }
 
-    const appEnv = this.config.get("APP_ENV", { infer: true });
     const otpDevEcho = this.config.get("OTP_DEV_ECHO", { infer: true });
+    const appEnv = this.config.get("APP_ENV", { infer: true });
     const devCode = otpDevEcho && appEnv !== "production" ? code : undefined;
 
     return {
-      expiresInSec: 300,
-      resendInSec: 30,
+      expiresInSec: OTP_TTL_SEC,
+      resendInSec: OTP_RESEND_SEC,
       ...(devCode ? { devCode } : {}),
     };
   }
@@ -129,25 +149,12 @@ export class AuthService {
     userAgent?: string,
     res?: Response,
   ): Promise<AuthVerifyResponse & { refreshToken: string }> {
-    const target = input.channel === "EMAIL" ? input.target.toLowerCase() : input.target;
+    const target = this.normaliseTarget(input);
 
-    // Check rate limit
     await this.rateLimit.assertOtpVerifyLimit(target, res);
+    await this.assertNotLocked(target);
 
-    // Check lock
-    try {
-      const isLocked = await this.redis.client.get(`otp:lock:${target}`);
-      if (isLocked) {
-        throw new AppError(
-          "OTP_TOO_MANY_ATTEMPTS",
-          "Too many invalid attempts. Try again in 15 minutes.",
-        );
-      }
-    } catch (err) {
-      if (err instanceof AppError) throw err;
-    }
-
-    // Find latest active OTP code for this target
+    // Only the latest unused code counts; a new request makes older codes useless.
     const record = await this.prisma.otpCode.findFirst({
       where: {
         channel: input.channel,
@@ -163,26 +170,32 @@ export class AuthService {
       throw new AppError("OTP_EXPIRED", "That code has expired. Send a new code.");
     }
 
-    const candidateHash = this.hashOtpCode(input.code);
-    const candidateBuf = Buffer.from(candidateHash, "hex");
-    const storedBuf = Buffer.from(record.codeHash, "hex");
+    // Covers the case where the Redis lock could not be written.
+    if (record.attempts >= OTP_MAX_ATTEMPTS) {
+      throw new AppError(
+        "OTP_TOO_MANY_ATTEMPTS",
+        "Too many invalid attempts. Try again in 15 minutes.",
+      );
+    }
 
+    const candidateBuf = Buffer.from(this.hashOtpCode(input.code), "hex");
+    const storedBuf = Buffer.from(record.codeHash, "hex");
     const matches =
-      candidateBuf.length === storedBuf.length &&
-      timingSafeEqual(candidateBuf, storedBuf);
+      candidateBuf.length === storedBuf.length && timingSafeEqual(candidateBuf, storedBuf);
 
     if (!matches) {
-      const newAttempts = record.attempts + 1;
-      await this.prisma.otpCode.update({
+      // Atomic increment: parallel wrong guesses cannot share one attempt.
+      const { attempts } = await this.prisma.otpCode.update({
         where: { id: record.id },
-        data: { attempts: newAttempts },
+        data: { attempts: { increment: 1 } },
+        select: { attempts: true },
       });
 
-      if (newAttempts >= 5) {
+      if (attempts >= OTP_MAX_ATTEMPTS) {
         try {
-          await this.redis.client.set(`otp:lock:${target}`, "1", "EX", 900);
+          await this.redis.client.set(`otp:lock:${target}`, "1", "EX", OTP_LOCK_SEC);
         } catch {
-          // Ignore redis failure
+          // Redis unreachable: the attempts check above still blocks this code.
         }
         throw new AppError(
           "OTP_TOO_MANY_ATTEMPTS",
@@ -196,22 +209,26 @@ export class AuthService {
       );
     }
 
-    // Mark consumed
-    await this.prisma.otpCode.update({
-      where: { id: record.id },
+    // Consume atomically so one code can never log in twice (parallel verify requests).
+    const consumed = await this.prisma.otpCode.updateMany({
+      where: { id: record.id, consumedAt: null },
       data: { consumedAt: new Date() },
     });
+    if (consumed.count !== 1) {
+      throw new AppError("OTP_EXPIRED", "That code has expired. Send a new code.");
+    }
 
     // Find or create user
     let user = await this.prisma.user.findFirst({
-      where:
-        input.channel === "EMAIL"
-          ? { email: target }
-          : { phone: target },
+      where: input.channel === "EMAIL" ? { email: target } : { phone: target },
       include: {
         userRoles: true,
       },
     });
+
+    if (user?.deletedAt) {
+      throw new AppError("FORBIDDEN", "This account has been deleted");
+    }
 
     if (!user) {
       user = await this.prisma.user.create({
@@ -241,7 +258,6 @@ export class AuthService {
       user.userRoles.push(newRole);
     }
 
-    // Generate access token
     const rolesPayload = user.userRoles.map((r) => ({
       role: r.role,
       depotId: r.depotId,
@@ -249,30 +265,23 @@ export class AuthService {
     }));
     const accessToken = await this.generateAccessToken(user.id, rolesPayload);
 
-    // Generate refresh token
     const rawRefreshToken = randomBytes(32).toString("hex");
-    const tokenHash = this.hashToken(rawRefreshToken);
-    const familyId = randomBytes(16).toString("hex");
-    const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
     await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
-        tokenHash,
-        familyId,
-        expiresAt: refreshExpiresAt,
+        tokenHash: this.hashToken(rawRefreshToken),
+        familyId: randomBytes(16).toString("hex"),
+        expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
         userAgent,
       },
     });
 
-    // Audit log
-    const primaryRole = user.userRoles[0]?.role ?? "CITIZEN";
     await this.audit.log({
       action: "auth.login",
       entityType: "user",
       entityId: user.id,
       actorUserId: user.id,
-      actorRole: primaryRole,
+      actorRole: user.userRoles[0]?.role ?? "CITIZEN",
       ip,
       userAgent,
     });
@@ -290,40 +299,32 @@ export class AuthService {
     userAgent?: string,
     res?: Response,
   ): Promise<AuthRefreshResponse & { newRefreshToken: string }> {
-    const tokenHash = this.hashToken(rawRefreshToken);
     const tokenRecord = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
+      where: { tokenHash: this.hashToken(rawRefreshToken) },
     });
 
     if (!tokenRecord) {
       throw new AppError("UNAUTHENTICATED", "Invalid refresh token");
     }
 
-    // Rate limit per user
     await this.rateLimit.assertRefreshLimit(tokenRecord.userId, res);
 
-    // If revoked, reuse was detected
     if (tokenRecord.revokedAt !== null) {
-      // Revoke whole family
-      await this.prisma.refreshToken.updateMany({
-        where: { familyId: tokenRecord.familyId },
-        data: { revokedAt: new Date() },
-      });
-
-      await this.audit.log({
-        action: "auth.refresh_reuse_detected",
-        entityType: "refresh_token",
-        entityId: tokenRecord.id,
-        actorUserId: tokenRecord.userId,
-        ip,
-        userAgent,
-      });
-
-      throw new AppError("UNAUTHENTICATED", "Refresh token reuse detected");
+      await this.revokeFamilyForReuse(tokenRecord, ip, userAgent);
     }
 
     if (tokenRecord.expiresAt < new Date()) {
       throw new AppError("UNAUTHENTICATED", "Refresh token expired");
+    }
+
+    // Claim the token atomically. Two requests racing with the same token: only one rotates,
+    // the other gets 401 (and any later use of this token is treated as reuse).
+    const claimed = await this.prisma.refreshToken.updateMany({
+      where: { id: tokenRecord.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (claimed.count !== 1) {
+      throw new AppError("UNAUTHENTICATED", "Refresh token already used");
     }
 
     const user = await this.prisma.user.findUnique({
@@ -331,31 +332,24 @@ export class AuthService {
       include: { userRoles: true },
     });
 
-    if (!user) {
+    if (!user || user.deletedAt) {
       throw new AppError("UNAUTHENTICATED", "User not found");
     }
 
-    // Rotate refresh token
     const newRawRefreshToken = randomBytes(32).toString("hex");
-    const newTokenHash = this.hashToken(newRawRefreshToken);
-    const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
     const newRecord = await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
-        tokenHash: newTokenHash,
+        tokenHash: this.hashToken(newRawRefreshToken),
         familyId: tokenRecord.familyId,
-        expiresAt: refreshExpiresAt,
+        expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
         userAgent,
       },
     });
 
     await this.prisma.refreshToken.update({
       where: { id: tokenRecord.id },
-      data: {
-        revokedAt: new Date(),
-        replacedById: newRecord.id,
-      },
+      data: { replacedById: newRecord.id },
     });
 
     const rolesPayload = user.userRoles.map((r) => ({
@@ -371,21 +365,42 @@ export class AuthService {
     };
   }
 
+  private async revokeFamilyForReuse(
+    tokenRecord: { id: string; familyId: string; userId: string },
+    ip?: string,
+    userAgent?: string,
+  ): Promise<never> {
+    await this.prisma.refreshToken.updateMany({
+      where: { familyId: tokenRecord.familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    await this.audit.log({
+      action: "auth.refresh_reuse_detected",
+      entityType: "refresh_token",
+      entityId: tokenRecord.id,
+      actorUserId: tokenRecord.userId,
+      ip,
+      userAgent,
+    });
+
+    throw new AppError("UNAUTHENTICATED", "Refresh token reuse detected");
+  }
+
   async logout(
     rawRefreshToken?: string,
-    user?: AuthenticatedUser,
+    user?: AuthenticatedUser | null,
     ip?: string,
     userAgent?: string,
   ): Promise<void> {
     if (rawRefreshToken) {
-      const tokenHash = this.hashToken(rawRefreshToken);
       const tokenRecord = await this.prisma.refreshToken.findUnique({
-        where: { tokenHash },
+        where: { tokenHash: this.hashToken(rawRefreshToken) },
       });
 
       if (tokenRecord) {
         await this.prisma.refreshToken.updateMany({
-          where: { familyId: tokenRecord.familyId },
+          where: { familyId: tokenRecord.familyId, revokedAt: null },
           data: { revokedAt: new Date() },
         });
 
@@ -394,6 +409,7 @@ export class AuthService {
           entityType: "user",
           entityId: tokenRecord.userId,
           actorUserId: tokenRecord.userId,
+          actorRole: user?.id === tokenRecord.userId ? (user.roles[0]?.role ?? null) : null,
           ip,
           userAgent,
         });
@@ -407,6 +423,7 @@ export class AuthService {
         entityType: "user",
         entityId: user.id,
         actorUserId: user.id,
+        actorRole: user.roles[0]?.role ?? null,
         ip,
         userAgent,
       });
@@ -419,7 +436,7 @@ export class AuthService {
       include: { userRoles: true },
     });
 
-    if (!user) {
+    if (!user || user.deletedAt) {
       throw new AppError("NOT_FOUND", "User not found");
     }
 

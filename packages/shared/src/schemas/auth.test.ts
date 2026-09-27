@@ -45,6 +45,17 @@ describe("auth schemas and helpers", () => {
     expect(invalidEmail.success).toBe(false);
   });
 
+  it("trims and lower cases email targets, leaves phone targets alone", () => {
+    const email = OtpRequestInput.parse({ channel: "EMAIL", target: "  Citizen@APTransit.Test " });
+    expect(email.target).toBe("citizen@aptransit.test");
+
+    const verify = OtpVerifyInput.parse({ channel: "EMAIL", target: "A@B.CO", code: "000123" });
+    expect(verify.target).toBe("a@b.co");
+
+    const phone = OtpRequestInput.parse({ channel: "PHONE", target: " +919876543210 " });
+    expect(phone.target).toBe("+919876543210");
+  });
+
   it("validates OtpVerifyInput code format", () => {
     const valid = OtpVerifyInput.safeParse({
       channel: "PHONE",

@@ -340,7 +340,7 @@ export function PrimitivesShowcase() {
       {/* 8. EmptyState and ErrorState */}
       <div className="flex flex-col gap-4">
         <h3 className="text-h3 font-semibold text-fg">8. Empty state and Error state</h3>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 border border-border-default rounded-lg divide-y md:divide-y-0 md:divide-x divide-border-default">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 border border-default rounded-lg divide-y md:divide-y-0 md:divide-x divide-default">
           <EmptyState
             icon={Bus}
             title="No buses found"
@@ -407,11 +407,11 @@ export function PrimitivesShowcase() {
                 </SheetDescription>
               </SheetHeader>
               <div className="flex flex-col gap-3 py-2">
-                <div className="flex items-center justify-between text-body border-b border-border-default pb-2">
+                <div className="flex items-center justify-between text-body border-b border-default pb-2">
                   <span className="text-muted">Charging points</span>
                   <span className="font-medium text-fg">At every row</span>
                 </div>
-                <div className="flex items-center justify-between text-body border-b border-border-default pb-2">
+                <div className="flex items-center justify-between text-body border-b border-default pb-2">
                   <span className="text-muted">Air Conditioning</span>
                   <span className="font-medium text-fg">Non-AC</span>
                 </div>
@@ -460,13 +460,13 @@ export function PrimitivesShowcase() {
                 History
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="tickets" className="p-4 border border-border-default rounded-md bg-surface-raised mt-2">
+            <TabsContent value="tickets" className="p-4 border border-default rounded-md bg-surface-raised mt-2">
               <p className="text-body text-fg">1 active ticket for Kurnool to Vijayawada.</p>
             </TabsContent>
-            <TabsContent value="passes" className="p-4 border border-border-default rounded-md bg-surface-raised mt-2">
+            <TabsContent value="passes" className="p-4 border border-default rounded-md bg-surface-raised mt-2">
               <p className="text-body text-fg">Free travel Stree Shakti pass active (365 days).</p>
             </TabsContent>
-            <TabsContent value="history" className="p-4 border border-border-default rounded-md bg-surface-raised mt-2">
+            <TabsContent value="history" className="p-4 border border-default rounded-md bg-surface-raised mt-2">
               <p className="text-body text-fg">Past bookings from previous 30 days.</p>
             </TabsContent>
           </Tabs>

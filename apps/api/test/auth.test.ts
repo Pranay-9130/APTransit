@@ -45,8 +45,21 @@ describe("Auth endpoints and lifecycle", () => {
         },
         update: async ({ where, data }: any) => {
           const rec = otpCodes.find((o) => o.id === where.id);
-          if (rec) Object.assign(rec, data);
+          if (rec) {
+            if (data.attempts?.increment) rec.attempts += data.attempts.increment;
+            else Object.assign(rec, data);
+          }
           return rec;
+        },
+        updateMany: async ({ where, data }: any) => {
+          let count = 0;
+          for (const o of otpCodes) {
+            if (o.id !== where.id) continue;
+            if (where.consumedAt === null && o.consumedAt !== null) continue;
+            Object.assign(o, data);
+            count++;
+          }
+          return { count };
         },
       },
       user: {
@@ -73,6 +86,7 @@ describe("Auth endpoints and lifecycle", () => {
             email: data.email ?? null,
             phone: data.phone ?? null,
             preferredLocale: data.preferredLocale ?? "en",
+            deletedAt: null,
             userRoles,
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -116,10 +130,11 @@ describe("Auth endpoints and lifecycle", () => {
         updateMany: async ({ where, data }: any) => {
           let count = 0;
           for (const t of refreshTokens) {
-            if (t.familyId === where.familyId) {
-              Object.assign(t, data);
-              count++;
-            }
+            if (where.id && t.id !== where.id) continue;
+            if (where.familyId && t.familyId !== where.familyId) continue;
+            if (where.revokedAt === null && t.revokedAt !== null) continue;
+            Object.assign(t, data);
+            count++;
           }
           return { count };
         },
@@ -136,7 +151,14 @@ describe("Auth endpoints and lifecycle", () => {
 
     const mockRedis = {
       client: {
+        status: "ready",
         ping: async () => "PONG",
+        // Same contract as the WINDOW_SCRIPT in redis-window.ts: [hits, ttlMs]
+        eval: async (_script: string, _keys: number, key: string, windowMs: string) => {
+          const val = Number(redisStore.get(key) ?? 0) + 1;
+          redisStore.set(key, String(val));
+          return [val, Number(windowMs)];
+        },
         get: async (k: string) => redisStore.get(k) ?? null,
         set: async (k: string, v: string) => {
           redisStore.set(k, v);
@@ -303,5 +325,137 @@ describe("Auth endpoints and lifecycle", () => {
 
     const logoutAudit = auditLogs.find((a) => a.action === "auth.logout");
     expect(logoutAudit).toBeDefined();
+  });
+
+  // Every test shares one client IP; keep the 10 per IP per hour limit out of unrelated tests.
+  function resetIpLimit(): void {
+    for (const key of [...redisStore.keys()]) {
+      if (key.startsWith("ratelimit:otp:req:ip:")) redisStore.delete(key);
+    }
+  }
+
+  async function requestCode(target: string): Promise<string> {
+    resetIpLimit();
+    const res = await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/request")
+      .send({ channel: "EMAIL", target });
+    expect(res.status).toBe(202);
+    return res.body.devCode as string;
+  }
+
+  function verify(target: string, code: string) {
+    return request(app.getHttpServer())
+      .post("/api/v1/auth/otp/verify")
+      .send({ channel: "EMAIL", target, code });
+  }
+
+  it("refresh cookie carries the docs/06 attributes", async () => {
+    const target = "cookie@aptransit.test";
+    const res = await verify(target, await requestCode(target));
+    const cookie = (res.headers["set-cookie"] as unknown as string[])[0]!;
+    expect(cookie).toContain("Path=/api/v1/auth");
+    expect(cookie).toContain("SameSite=Lax");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toMatch(/Max-Age=2592000/);
+  });
+
+  it("an email target is matched case insensitively", async () => {
+    const code = await requestCode("Mixed.Case@APTransit.test");
+    const res = await verify("mixed.case@aptransit.test", code);
+    expect(res.status).toBe(200);
+    expect(res.body.user.email).toBe("mixed.case@aptransit.test");
+  });
+
+  it("a code works only once", async () => {
+    const target = "once@aptransit.test";
+    const code = await requestCode(target);
+    expect((await verify(target, code)).status).toBe(200);
+    const again = await verify(target, code);
+    expect(again.status).toBe(410);
+    expect(again.body.error.code).toBe("OTP_EXPIRED");
+  });
+
+  it("parallel verifies with the same code log in only once", async () => {
+    const target = "race@aptransit.test";
+    const code = await requestCode(target);
+    const results = await Promise.all([verify(target, code), verify(target, code)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 410]);
+  });
+
+  it("an expired code is refused with OTP_EXPIRED", async () => {
+    const target = "late@aptransit.test";
+    const code = await requestCode(target);
+    otpCodes[otpCodes.length - 1].expiresAt = new Date(Date.now() - 1000);
+    const res = await verify(target, code);
+    expect(res.status).toBe(410);
+    expect(res.body.error.code).toBe("OTP_EXPIRED");
+  });
+
+  it("5 wrong codes lock the target for 15 minutes", async () => {
+    const target = "brute@aptransit.test";
+    const code = await requestCode(target);
+    const wrong = code === "000000" ? "111111" : "000000";
+    for (let i = 1; i <= 4; i++) {
+      expect((await verify(target, wrong)).body.error.code).toBe("OTP_INVALID");
+    }
+    const fifth = await verify(target, wrong);
+    expect(fifth.body.error.code).toBe("OTP_TOO_MANY_ATTEMPTS");
+    expect(redisStore.get(`otp:lock:${target}`)).toBe("1");
+
+    resetIpLimit();
+    const locked = await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/request")
+      .send({ channel: "EMAIL", target });
+    expect(locked.body.error.code).toBe("OTP_TOO_MANY_ATTEMPTS");
+  });
+
+  it("the 4th code request for one target in 10 minutes gets 429 with Retry-After", async () => {
+    const target = "spam@aptransit.test";
+    for (let i = 0; i < 3; i++) await requestCode(target);
+    resetIpLimit();
+    const res = await request(app.getHttpServer())
+      .post("/api/v1/auth/otp/request")
+      .send({ channel: "EMAIL", target });
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe("RATE_LIMITED");
+    expect(Number(res.headers["retry-after"])).toBeGreaterThan(0);
+  });
+
+  it("two refreshes racing with one token rotate it only once", async () => {
+    const target = "tabs@aptransit.test";
+    const login = await verify(target, await requestCode(target));
+    const cookie = (login.headers["set-cookie"] as unknown as string[])[0]!;
+
+    const results = await Promise.all([
+      request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", cookie),
+      request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", cookie),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
+  });
+
+  it("a failed refresh clears the cookie", async () => {
+    const res = await request(app.getHttpServer())
+      .post("/api/v1/auth/refresh")
+      .set("Cookie", "apt_rt=not-a-real-token");
+    expect(res.status).toBe(401);
+    const cookie = (res.headers["set-cookie"] as unknown as string[])[0]!;
+    expect(cookie).toMatch(/^apt_rt=;/);
+  });
+
+  it("a soft deleted user cannot refresh", async () => {
+    const target = "gone@aptransit.test";
+    const login = await verify(target, await requestCode(target));
+    const cookie = (login.headers["set-cookie"] as unknown as string[])[0]!;
+    users.find((u) => u.email === target).deletedAt = new Date();
+
+    const res = await request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", cookie);
+    expect(res.status).toBe(401);
+  });
+
+  it("logged in routes report the default rate limit", async () => {
+    const res = await request(app.getHttpServer())
+      .get("/api/v1/me")
+      .set("Authorization", `Bearer ${accessToken}`);
+    expect(res.headers["x-ratelimit-limit"]).toBe("120");
   });
 });

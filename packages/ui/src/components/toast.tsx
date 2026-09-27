@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { Toaster as Sonner, toast } from "sonner";
 import { cn } from "../cn";
@@ -14,7 +16,7 @@ export const Toaster = ({ className, ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast:
-            "group toast font-sans rounded-md border border-border-default bg-surface-raised text-fg shadow-lg p-4 text-body",
+            "group toast font-sans rounded-md border border-default bg-surface-raised text-fg shadow-lg p-4 text-body",
           description: "text-muted text-small",
           actionButton:
             "bg-primary text-on-primary font-medium text-small px-3 py-1.5 rounded-sm",

@@ -7,19 +7,18 @@ export interface PageHeaderProps {
   actions?: ReactNode;
 }
 
+/** Ops, gov and admin page header (docs/09): title, optional description, filters, primary action. */
 export function PageHeader({ title, description, filters, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 pb-6 border-b border-subtle">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-h1 font-bold text-text tracking-tight">{title}</h1>
-          {description ? (
-            <p className="text-body text-muted mt-1">{description}</p>
-          ) : null}
+    <div className="flex flex-col gap-4 border-b border-default pb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-h1 text-fg">{title}</h1>
+          {description ? <p className="mt-1 text-body text-muted">{description}</p> : null}
         </div>
-        {actions ? <div className="flex items-center gap-3 shrink-0">{actions}</div> : null}
+        {actions ? <div className="flex shrink-0 items-center gap-3">{actions}</div> : null}
       </div>
-      {filters ? <div className="flex flex-wrap items-center gap-3 pt-2">{filters}</div> : null}
+      {filters ? <div className="flex flex-wrap items-center gap-3">{filters}</div> : null}
     </div>
   );
 }

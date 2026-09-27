@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
@@ -14,7 +16,7 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full items-center justify-between rounded-md border border-border-strong bg-surface-raised px-3.5 text-body text-fg transition-colors select-none",
+      "flex h-11 w-full items-center justify-between rounded-md border border-strong bg-surface-raised px-3.5 text-body text-fg transition-colors select-none",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
       "disabled:cursor-not-allowed disabled:opacity-50",
       "aria-[invalid=true]:border-status-danger-solid",
@@ -91,7 +93,7 @@ export const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-border-default", className)}
+    className={cn("-mx-1 my-1 h-px bg-default", className)}
     {...props}
   />
 ));

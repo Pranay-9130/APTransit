@@ -1,76 +1,64 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { Response } from "express";
 import { RedisService } from "../../redis/redis.service";
 import { AppError } from "../errors/app-error";
+import { hitWindow } from "./redis-window";
 
+/** Auth limits from docs/12 that are keyed by something other than user or IP (the OTP target). */
 @Injectable()
 export class RateLimitService {
-  private readonly logger = new Logger(RateLimitService.name);
-
   constructor(private readonly redis: RedisService) {}
 
-  private async checkLimit(
+  private async enforce(
     key: string,
     limit: number,
     windowSec: number,
-  ): Promise<{ allowed: boolean; retryAfter: number }> {
-    try {
-      const count = await this.redis.client.incr(key);
-      if (count === 1) {
-        await this.redis.client.expire(key, windowSec);
-      }
-      let ttl = await this.redis.client.ttl(key);
-      if (ttl < 0) ttl = windowSec;
+    message: string,
+    res?: Response,
+  ): Promise<void> {
+    const hit = await hitWindow(this.redis.client, key, windowSec * 1000);
+    // Redis unreachable: do not block users. OTP attempts are still capped in the database.
+    if (!hit || hit.hits <= limit) return;
 
-      if (count > limit) {
-        return { allowed: false, retryAfter: ttl };
-      }
-      return { allowed: true, retryAfter: 0 };
-    } catch {
-      // If Redis is unreachable, do not block user requests
-      return { allowed: true, retryAfter: 0 };
-    }
+    const retryAfter = Math.max(1, Math.ceil(hit.ttlMs / 1000));
+    res?.setHeader("Retry-After", String(retryAfter));
+    throw new AppError("RATE_LIMITED", message, { retryAfter });
   }
 
   async assertOtpRequestLimit(target: string, ip: string, res?: Response): Promise<void> {
-    // 3 per target per 10 min
-    const targetCheck = await this.checkLimit(`ratelimit:otp:req:target:${target}`, 3, 600);
-    if (!targetCheck.allowed) {
-      if (res) res.setHeader("Retry-After", String(targetCheck.retryAfter));
-      throw new AppError("RATE_LIMITED", "Too many attempts for this target. Wait a minute and try again.", {
-        retryAfter: targetCheck.retryAfter,
-      });
-    }
-
-    // 10 per IP per hour
-    const ipCheck = await this.checkLimit(`ratelimit:otp:req:ip:${ip}`, 10, 3600);
-    if (!ipCheck.allowed) {
-      if (res) res.setHeader("Retry-After", String(ipCheck.retryAfter));
-      throw new AppError("RATE_LIMITED", "Too many attempts from this IP. Wait a minute and try again.", {
-        retryAfter: ipCheck.retryAfter,
-      });
-    }
+    await this.enforce(
+      `ratelimit:otp:req:target:${target}`,
+      3,
+      600,
+      "Too many codes requested. Wait a few minutes and try again.",
+      res,
+    );
+    await this.enforce(
+      `ratelimit:otp:req:ip:${ip}`,
+      10,
+      3600,
+      "Too many codes requested from this network. Try again later.",
+      res,
+    );
   }
 
   async assertOtpVerifyLimit(target: string, res?: Response): Promise<void> {
-    // 5 per target per 10 min
-    const check = await this.checkLimit(`ratelimit:otp:verify:target:${target}`, 5, 600);
-    if (!check.allowed) {
-      if (res) res.setHeader("Retry-After", String(check.retryAfter));
-      throw new AppError("RATE_LIMITED", "Too many verification attempts. Wait a minute and try again.", {
-        retryAfter: check.retryAfter,
-      });
-    }
+    await this.enforce(
+      `ratelimit:otp:verify:target:${target}`,
+      5,
+      600,
+      "Too many verification attempts. Wait a few minutes and try again.",
+      res,
+    );
   }
 
   async assertRefreshLimit(userId: string, res?: Response): Promise<void> {
-    // 30 per user per hour
-    const check = await this.checkLimit(`ratelimit:auth:refresh:${userId}`, 30, 3600);
-    if (!check.allowed) {
-      if (res) res.setHeader("Retry-After", String(check.retryAfter));
-      throw new AppError("RATE_LIMITED", "Too many refresh attempts. Wait a minute and try again.", {
-        retryAfter: check.retryAfter,
-      });
-    }
+    await this.enforce(
+      `ratelimit:auth:refresh:${userId}`,
+      30,
+      3600,
+      "Too many refresh attempts. Try again later.",
+      res,
+    );
   }
 }

@@ -22,7 +22,7 @@ Today `/` is a temporary token check page (delete on Day 3, when `/design` exist
 ## How it is wired
 
 - `app/globals.css`: `@import "tailwindcss"`, then `@import "@aptransit/ui/tokens.css"`, then `@source` for `packages/ui/src` so Tailwind sees component classes. Class reference: `packages/ui/README.md`.
-- `app/layout.tsx`: Inter (`--font-inter`) and Noto Sans Telugu (`--font-telugu`) via `next/font/google`, self hosted at build time. Title template `"%s · AP TransitOS"`. `lang` and theme come from cookies on Day 3.
+- `app/layout.tsx`: Inter (`--font-inter`) and Noto Sans Telugu (`--font-telugu`) via `next/font/google`, self hosted at build time. Title template `"%s · AP TransitOS"` (from i18n). `lang`, `data-locale` and `data-theme` come from the `locale` and `theme` cookies (`i18n/request.ts`, `lib/preferences.ts`).
 - `next.config.ts`:
   - rewrites `/api/v1/*` to `API_URL`, so the browser always calls the web origin and the refresh cookie stays first party (docs/06);
   - `transpilePackages: ["@aptransit/ui"]` because ui ships source;
@@ -30,12 +30,20 @@ Today `/` is a temporary token check page (delete on Day 3, when `/design` exist
   - `poweredByHeader: false`.
 - `@aptransit/shared` is imported from its compiled `dist/` (Turbo builds it first).
 
+- Shells: `(citizen)/layout.tsx` (top bar, `CitizenTopNav`, `CitizenBottomNav`), `components/field-shell.tsx` (driver, conductor), `components/management-shell.tsx` (ops, gov, admin). Landing pages use `components/coming-soon.tsx` until their real screen ships.
+- Nested layout titles use `title: { absolute: "<Area> · AP TransitOS", template: "%s · AP TransitOS" }`. A plain `default` gets the root template again ("X · AP TransitOS · AP TransitOS").
+
 ## Rules that bite
 
 - **Next.js 16 changed APIs.** When unsure, read the bundled guides in `node_modules/next/dist/docs/` before writing code (AGENTS.md rule 12).
 - **Tokens only.** No hex, no `bg-white`, no `text-lg` (they do not exist). Use `packages/ui` classes.
 - **No hardcoded strings** from Day 3 on (next-intl keys in `messages/en.json` and `messages/te.json`). The Day 1 token page is the only exception.
 - **No `setState` directly in `useEffect`.** The React Compiler lint rule rejects it. Read browser state with `useSyncExternalStore`, change things in event handlers. Example: `app/_token-check/token-check.tsx`.
+- **Server to client props must be plain data.** A server layout cannot pass a component function (`icon: Bus`) to a client component. Pass an element (`icon: <Bus />`) or a string key.
+- **`packages/ui` components with event handlers are `"use client"`** (Button, IconButton, ErrorState, Radix wrappers). Keep EmptyState, Card, Field and inputs free of it: server pages pass them icon components.
+- **Buttons that navigate:** `<Button asChild><Link href="/">...</Link></Button>`. Never `<Link><Button/></Link>` (a button inside a link is invalid HTML).
+- **Cookies from components:** write them through `lib/preferences.ts`; the React Compiler lint rejects `document.cookie = ...` inside a component.
+- **Next 16 renamed `middleware.ts` to `proxy.ts`** (function `proxy`). Read `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md` before the Day 4 route guard.
 - **Private folders** start with `_` (`app/_token-check`), so they never become routes.
 - **Telugu overflow:** check every screen at 360 px in Telugu. In flex and grid rows give text cells `min-w-0`.
 - Every screen needs loading, empty, error and success states (docs/11), and a single `h1`.

@@ -4,7 +4,6 @@ import { Button, ErrorState } from "@aptransit/ui";
 import { Home } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect } from "react";
 
 export default function GlobalError({
   error,
@@ -15,13 +14,8 @@ export default function GlobalError({
 }) {
   const t = useTranslations();
 
-  useEffect(() => {
-    // Log the error to error reporting service if present
-    console.error(error);
-  }, [error]);
-
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center p-4">
+    <main id="main-content" className="flex min-h-[70vh] flex-col items-center justify-center gap-4 p-4">
       <ErrorState
         title={t("error.title")}
         message={t("error.description")}
@@ -29,14 +23,12 @@ export default function GlobalError({
         onRetry={reset}
         requestId={error.digest}
       />
-      <div className="mt-4">
+      <Button asChild variant="ghost" size="md">
         <Link href="/">
-          <Button variant="ghost" size="md">
-            <Home className="size-4 mr-2" aria-hidden="true" />
-            {t("common.goHome")}
-          </Button>
+          <Home className="size-4" aria-hidden="true" />
+          {t("common.goHome")}
         </Link>
-      </div>
-    </div>
+      </Button>
+    </main>
   );
 }

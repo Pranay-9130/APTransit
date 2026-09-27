@@ -8,9 +8,9 @@ export const cardVariants = cva(
   {
     variants: {
       variant: {
-        plain: "bg-surface-raised border-border-default",
+        plain: "bg-surface-raised border-default",
         interactive:
-          "bg-surface-raised border-border-default hover:border-border-strong cursor-pointer active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 select-none",
+          "bg-surface-raised border-default hover:border-strong cursor-pointer active:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 select-none",
         selected: "bg-primary-soft border-primary border-2",
       },
       padding: {

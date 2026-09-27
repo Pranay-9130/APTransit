@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Noto_Sans_Telugu } from "next/font/google";
 import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import "./globals.css";
 
@@ -14,10 +14,13 @@ const notoSansTelugu = Noto_Sans_Telugu({
   variable: "--font-telugu",
 });
 
-export const metadata: Metadata = {
-  title: { default: "AP TransitOS", template: "%s · AP TransitOS" },
-  description: "One connected public transport platform for Andhra Pradesh.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("common");
+  return {
+    title: { default: t("appName"), template: `%s · ${t("appName")}` },
+    description: t("appDescription"),
+  };
+}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();

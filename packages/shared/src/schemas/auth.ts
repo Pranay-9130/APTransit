@@ -28,10 +28,14 @@ export function maskEmail(email: string): string {
   return `${first}***${domain}`;
 }
 
+/** Emails are compared lower cased everywhere (docs/05: users.email is unique). */
+const lowerCaseEmail = <T extends { channel: string; target: string }>(data: T): T =>
+  data.channel === "EMAIL" ? { ...data, target: data.target.toLowerCase() } : data;
+
 export const OtpRequestInput = z
   .object({
     channel: OtpChannel,
-    target: z.string().trim(),
+    target: z.string().trim().min(1).max(254),
   })
   .superRefine((data, ctx) => {
     if (data.channel === "PHONE") {
@@ -52,13 +56,14 @@ export const OtpRequestInput = z
         });
       }
     }
-  });
+  })
+  .transform(lowerCaseEmail);
 export type OtpRequestInput = z.infer<typeof OtpRequestInput>;
 
 export const OtpVerifyInput = z
   .object({
     channel: OtpChannel,
-    target: z.string().trim(),
+    target: z.string().trim().min(1).max(254),
     code: z.string().regex(/^\d{6}$/, "Code must be 6 digits"),
   })
   .superRefine((data, ctx) => {
@@ -80,7 +85,8 @@ export const OtpVerifyInput = z
         });
       }
     }
-  });
+  })
+  .transform(lowerCaseEmail);
 export type OtpVerifyInput = z.infer<typeof OtpVerifyInput>;
 
 export const UserRoleDto = z.object({

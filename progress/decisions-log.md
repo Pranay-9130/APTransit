@@ -112,6 +112,46 @@ The only way to change a locked doc in `docs/`. Add an entry, agree at the daily
 - **Decision:** add esbuild: true to allowBuilds in pnpm-workspace.yaml.
 - **Status:** Proposed, review at the Day 2 sync
 
+### D-012 · Refresh race: one winner, no family revoke
+- **Date:** 2026-09-27
+- **Raised by:** Day 3 review
+- **Doc affected:** docs/12-security.md (A07), docs/06-api-contract.md (POST /auth/refresh)
+- **Problem:** two tabs refreshing with the same cookie at the same moment could both rotate (two live tokens), or, with strict reuse detection, log the user out everywhere.
+- **Decision:** the token is claimed atomically. The loser gets 401 without revoking the family; any later use of that old token is reuse and revokes the family. The web client should single flight refresh across tabs too (Web Locks or BroadcastChannel) on Day 4.
+- **Status:** Proposed, review at the Day 4 sync
+
+### D-013 · Refresh cookie drops Secure only in local development
+- **Date:** 2026-09-27
+- **Raised by:** Day 3 review
+- **Doc affected:** docs/06-api-contract.md (Basics, Auth)
+- **Problem:** docs/06 says `Secure`. Day 3 set it only when APP_ENV was production, so staging cookies were not Secure. Safari refuses Secure cookies on http://localhost.
+- **Decision:** `Secure` whenever APP_ENV is not development. A failed refresh also clears the cookie so the web route guard (cookie present) does not trust a dead token.
+- **Status:** Proposed, review at the Day 4 sync
+
+### D-014 · Scrim token for overlays
+- **Date:** 2026-09-27
+- **Raised by:** Day 3 review
+- **Doc affected:** docs/09-design-system.md (Colour)
+- **Problem:** Dialog and Sheet used `bg-black/60`, which does not exist in our theme, so they had no dimmed backdrop.
+- **Decision:** new token `--scrim` (light `rgb(14 22 33 / 0.6)`, dark `rgb(0 0 0 / 0.7)`) as `bg-scrim`.
+- **Status:** Proposed, review at the Day 4 sync
+
+### D-015 · Question: short Telugu label for "Track bus" in the bottom nav
+- **Date:** 2026-09-27
+- **Raised by:** Day 3 review
+- **Doc affected:** docs/10-ux-writing.md (Glossary, nav.track)
+- **Problem:** at 360 px the glossary value "బస్సును ట్రాక్ చేయండి" needs three lines in the bottom nav. It is clamped to two lines with an ellipsis (screen readers still get the full label).
+- **Decision:** open. Option: add `nav.trackShort` ("Track" / a short Telugu term) for the bottom nav only. Needs a native speaker.
+- **Status:** Proposed, review at the Day 4 sync
+
+### D-016 · Question: how the web route guard knows a session exists
+- **Date:** 2026-09-27
+- **Raised by:** Day 3 review
+- **Doc affected:** docs/06-api-contract.md (Basics, Auth), docs/08-roles-permissions.md (web route guards), prompts/day-04.md (Dev A step 3)
+- **Problem:** Day 4 asks the Next proxy to redirect when the `apt_rt` cookie is missing, but `apt_rt` has `Path=/api/v1/auth`, so the browser never sends it with page requests. The guard would always redirect.
+- **Decision:** open. Proposal: the API also sets `apt_session=1` (httpOnly, Secure outside development, SameSite=Lax, Path=/, same max age) on verify and refresh, and clears it on logout and failed refresh. It carries no secret; the proxy only checks it exists. Widening `apt_rt` to `Path=/` instead would send the refresh token with every request.
+- **Status:** Proposed, agree before Day 4 work starts
+
 ## Parked (ideas outside the 20 day scope)
 
 | Idea | Raised by | Plan sec |

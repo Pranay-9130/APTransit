@@ -101,6 +101,20 @@ export function validateFilePair(enPath, tePath, label) {
   return errors;
 }
 
+/** Web and shared files are merged shallowly at runtime, so a shared top level key would hide a web one. */
+export function findNamespaceOverlap(webPath, sharedPath) {
+  if (!fs.existsSync(webPath) || !fs.existsSync(sharedPath)) return [];
+  try {
+    const web = Object.keys(JSON.parse(fs.readFileSync(webPath, "utf8")));
+    const shared = new Set(Object.keys(JSON.parse(fs.readFileSync(sharedPath, "utf8"))));
+    return web
+      .filter((ns) => shared.has(ns))
+      .map((ns) => `Top level key "${ns}" exists in both web and shared messages (the shared one would replace it)`);
+  } catch {
+    return [];
+  }
+}
+
 export function runCheck() {
   const webEn = path.join(rootDir, "apps/web/messages/en.json");
   const webTe = path.join(rootDir, "apps/web/messages/te.json");
@@ -110,6 +124,7 @@ export function runCheck() {
   const allErrors = [
     ...validateFilePair(sharedEn, sharedTe, "shared"),
     ...validateFilePair(webEn, webTe, "web"),
+    ...findNamespaceOverlap(webEn, sharedEn),
   ];
 
   if (allErrors.length > 0) {

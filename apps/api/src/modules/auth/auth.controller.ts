@@ -19,6 +19,7 @@ import {
   Res,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { SkipThrottle } from "@nestjs/throttler";
 import type { Request, Response } from "express";
 import type { AuthenticatedUser } from "../../common/auth/auth.types";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -35,34 +36,40 @@ function getRefreshTokenFromReq(req: Request): string | undefined {
   return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 }
 
-function setRefreshTokenCookie(res: Response, token: string, isProd: boolean) {
+// docs/06: httpOnly, Secure, SameSite=Lax, path /api/v1/auth, 30 days. Only local development
+// over plain http drops Secure (Safari refuses Secure cookies on http://localhost).
+function setRefreshTokenCookie(res: Response, token: string, secure: boolean) {
   res.cookie("apt_rt", token, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite: "lax",
     path: "/api/v1/auth",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 }
 
-function clearRefreshTokenCookie(res: Response) {
+function clearRefreshTokenCookie(res: Response, secure: boolean) {
   res.clearCookie("apt_rt", {
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
     path: "/api/v1/auth",
   });
 }
 
 @Controller()
 export class AuthController {
-  private readonly isProd: boolean;
+  private readonly secureCookie: boolean;
 
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService<Env, true>,
   ) {
-    this.isProd = this.config.get("APP_ENV", { infer: true }) === "production";
+    this.secureCookie = this.config.get("APP_ENV", { infer: true }) !== "development";
   }
 
   @Public()
+  @SkipThrottle()
   @Post("auth/otp/request")
   @HttpCode(HttpStatus.ACCEPTED)
   async requestOtp(
@@ -75,6 +82,7 @@ export class AuthController {
   }
 
   @Public()
+  @SkipThrottle()
   @Post("auth/otp/verify")
   @HttpCode(HttpStatus.OK)
   async verifyOtp(
@@ -86,7 +94,7 @@ export class AuthController {
     const userAgent = req.headers["user-agent"];
     const result = await this.authService.verifyOtp(body, ip, userAgent, res);
 
-    setRefreshTokenCookie(res, result.refreshToken, this.isProd);
+    setRefreshTokenCookie(res, result.refreshToken, this.secureCookie);
 
     return {
       accessToken: result.accessToken,
@@ -95,6 +103,7 @@ export class AuthController {
   }
 
   @Public()
+  @SkipThrottle()
   @Post("auth/refresh")
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -108,9 +117,18 @@ export class AuthController {
 
     const ip = req.ip;
     const userAgent = req.headers["user-agent"];
-    const result = await this.authService.refresh(rawToken, ip, userAgent, res);
+    let result: Awaited<ReturnType<AuthService["refresh"]>>;
+    try {
+      result = await this.authService.refresh(rawToken, ip, userAgent, res);
+    } catch (err) {
+      // A dead token must not stay in the browser (the web route guard only checks it exists).
+      if (err instanceof AppError && err.code === "UNAUTHENTICATED") {
+        clearRefreshTokenCookie(res, this.secureCookie);
+      }
+      throw err;
+    }
 
-    setRefreshTokenCookie(res, result.newRefreshToken, this.isProd);
+    setRefreshTokenCookie(res, result.newRefreshToken, this.secureCookie);
 
     return {
       accessToken: result.accessToken,
@@ -123,14 +141,14 @@ export class AuthController {
   async logout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @CurrentUser() user?: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser | null,
   ): Promise<void> {
     const rawToken = getRefreshTokenFromReq(req);
     const ip = req.ip;
     const userAgent = req.headers["user-agent"];
 
     await this.authService.logout(rawToken, user, ip, userAgent);
-    clearRefreshTokenCookie(res);
+    clearRefreshTokenCookie(res, this.secureCookie);
   }
 
   @Get("me")

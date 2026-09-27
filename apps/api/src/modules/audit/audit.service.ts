@@ -1,5 +1,7 @@
 import type { Role } from "@aptransit/shared";
 import { Injectable, Logger } from "@nestjs/common";
+import type { Request } from "express";
+import type { AuthenticatedUser } from "../../common/auth/auth.types";
 import type { Prisma } from "../../generated/prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -13,6 +15,18 @@ export interface LogAuditParams {
   actorRole?: Role | null;
   ip?: string | null;
   userAgent?: string | null;
+}
+
+/** Actor, first role, ip and user agent of the current request, ready to spread into log(). */
+export function auditActorFromRequest(
+  req: Request & { user?: AuthenticatedUser | null },
+): Pick<LogAuditParams, "actorUserId" | "actorRole" | "ip" | "userAgent"> {
+  return {
+    actorUserId: req.user?.id ?? null,
+    actorRole: req.user?.roles[0]?.role ?? null,
+    ip: req.ip ?? null,
+    userAgent: req.headers["user-agent"] ?? null,
+  };
 }
 
 @Injectable()

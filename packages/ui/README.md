@@ -34,6 +34,7 @@ Design tokens and React components for AP TransitOS. Owner: Dev A. Rules: `docs/
 | `bg-status-<tone>-soft` | tone soft background | badges |
 | `bg-status-<tone>-solid` + `text-on-solid` | solid tone + white | scanner result, map markers |
 | `bg-day-mon` to `bg-day-sun` | colour of the day | ticket band only |
+| `bg-scrim` | `--scrim` | dim layer behind Dialog and Sheet |
 | `bg-transparent`, `bg-current`, `bg-inherit` | built in | still available |
 
 Tones: `success`, `info`, `warning`, `danger`, `maintenance`, `neutral`. Map a status to a tone only through `STATUS_MAP` and `TICKET_STATUS_MAP` in `@aptransit/shared`, never by hand.
@@ -94,5 +95,7 @@ import { cn } from "@aptransit/ui";
 5. Colour changes must keep WCAG AA (4.5:1 text, 3:1 control borders) in both themes. Check before merging.
 
 ## Components (from Day 2)
+
+Components with event handlers or Radix state start with `"use client"` so server pages can render them. EmptyState, Card, Field, Input, Textarea, Skeleton, Spinner and StatusBadge stay server safe (server pages pass them icon components). Border colours are `border-default` and `border-strong` (not `border-border-*`, which do not exist).
 
 Put each component in `src/components/<name>.tsx`, export it from `src/index.ts`, and follow `docs/09` (variants, states, keyboard, dark mode). Text always comes in through props or `children`, never hardcoded. Tests live next to the component (test setup arrives with the first component, see `progress/handoff.md`, Day 2 notes).

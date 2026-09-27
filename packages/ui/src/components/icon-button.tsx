@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../cn";
@@ -11,16 +13,16 @@ export const iconButtonVariants = cva(
         primary:
           "bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover",
         secondary:
-          "bg-surface text-fg border border-border-strong hover:bg-surface-raised active:bg-surface",
+          "bg-surface text-fg border border-strong hover:bg-surface-raised active:bg-surface",
         ghost:
           "bg-transparent text-fg hover:bg-surface active:bg-surface-raised",
         danger:
           "bg-status-danger-solid text-on-solid hover:opacity-90 active:opacity-100",
       },
       size: {
-        md: "h-11 w-11 min-h-[44px] min-w-[44px]",
-        lg: "h-13 w-13 min-h-[52px] min-w-[52px]",
-        xl: "h-14 w-14 min-h-[56px] min-w-[56px]",
+        md: "h-11 w-11 min-h-11 min-w-11",
+        lg: "h-13 w-13 min-h-13 min-w-13",
+        xl: "h-14 w-14 min-h-14 min-w-14",
       },
     },
     defaultVariants: {
