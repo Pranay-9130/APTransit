@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { Activity, BarChart3, FileText, Landmark } from "lucide-react";
 import { ManagementShell } from "../../components/management-shell";
+import { RequirePermission } from "../../components/require-auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations();
@@ -26,7 +27,7 @@ export default async function GovLayout({ children }: { children: ReactNode }) {
       items={navItems}
       scope={{ icon: Landmark, label: t("common.scope"), value: t("common.state") }}
     >
-      {children}
+      <RequirePermission anyOf={["gov:read"]}>{children}</RequirePermission>
     </ManagementShell>
   );
 }

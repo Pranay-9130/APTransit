@@ -9,14 +9,13 @@ cp .env.example .env.local      # docs/15
 pnpm dev                        # from the repo root: web on http://localhost:3000, api on :4000
 ```
 
-Today `/` is a temporary token check page (delete on Day 3, when `/design` exists).
-
 ## Scripts
 
 | Script | What it does |
 | --- | --- |
 | `dev`, `build`, `start` | Next on port 3000 (Turbopack) |
 | `lint` | ESLint: Next core web vitals, Next TypeScript, full jsx-a11y recommended, our shared rules |
+| `test` | Vitest for `lib/` and `proxy.ts` |
 | `typecheck` | `next typegen` (route types) then `tsc --noEmit` |
 
 ## How it is wired
@@ -32,6 +31,15 @@ Today `/` is a temporary token check page (delete on Day 3, when `/design` exist
 
 - Shells: `(citizen)/layout.tsx` (top bar, `CitizenTopNav`, `CitizenBottomNav`), `components/field-shell.tsx` (driver, conductor), `components/management-shell.tsx` (ops, gov, admin). Landing pages use `components/coming-soon.tsx` until their real screen ships.
 - Nested layout titles use `title: { absolute: "<Area> · AP TransitOS", template: "%s · AP TransitOS" }`. A plain `default` gets the root template again ("X · AP TransitOS · AP TransitOS").
+
+## Data and session (Day 4)
+
+- **Calling the API:** always `api(path, { schema, query, method, body })` from `lib/api.ts`. It parses the docs/06 error shape into `ApiError` (`code`, `status`, `details`, `requestId`, `retryAfterSec`), validates the response with the shared Dto, and on 401 refreshes once (single flight in the tab, Web Lock across tabs) and retries once. Public data passes `redirectOn401: false`.
+- **Errors on screen:** `t(errorKey(error, (k) => t.has(k)))` gives `errors.<CODE>`, `errors.NETWORK` or `errors.INTERNAL`.
+- **Session:** `components/providers.tsx` (React Query + `AuthProvider` + Toaster) wraps everything in the root layout. The access token lives in `lib/session.ts` (memory only). `useAuth()` gives `status`, `login`, `logout`; `useMe()` gives the user. The root layout passes `hasSession` (the httpOnly `apt_session` marker, D-016) so anonymous visitors never trigger a refresh call.
+- **Guards:** `proxy.ts` redirects the docs/08 login routes to `/login?next=` when the marker is missing. Pages wrap content in `RequireAuth`, staff layouts in `RequirePermission anyOf={[...]}` (403 state). `lib/roles.ts` has the role homes and `safeNextPath` (never redirect off site).
+- **Query keys:** `lib/query-keys.ts`.
+- **Tests:** `pnpm --filter web test` (vitest, node) for `lib/` and `proxy.ts`. Components with behaviour live in `packages/ui` with their tests.
 
 ## Rules that bite
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { FieldShell } from "../../components/field-shell";
+import { RequirePermission } from "../../components/require-auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations();
@@ -14,7 +15,7 @@ export default async function DriverLayout({ children }: { children: ReactNode }
 
   return (
     <FieldShell title={t("shell.driver")} homeHref="/driver">
-      {children}
+      <RequirePermission anyOf={["driver:trip"]}>{children}</RequirePermission>
     </FieldShell>
   );
 }

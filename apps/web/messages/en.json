@@ -28,12 +28,38 @@
     "appDescription": "One connected public transport platform for Andhra Pradesh.",
     "useLightTheme": "Use light theme",
     "useDarkTheme": "Use dark theme",
-    "notSelected": "Not selected"
+    "notSelected": "Not selected",
+    "loading": "Loading",
+    "close": "Close"
   },
   "home": {
     "question": "Where do you want to go?",
-    "placeholderTitle": "Home screen arrives on Day 4",
-    "placeholderDescription": "Search routes, timetables, and live bus tracking will be available soon."
+    "quickActions": "Quick actions",
+    "loadingForm": "Loading the search form",
+    "fromPlaceholder": "Town or bus stand",
+    "toPlaceholder": "Town or bus stand",
+    "swap": "Swap From and To",
+    "date": {
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "pick": "Pick a date",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month"
+    },
+    "errors": {
+      "fromRequired": "Choose where you start.",
+      "toRequired": "Choose where you want to go.",
+      "samePlace": "From and To must be different places."
+    },
+    "places": {
+      "recent": "Recent places",
+      "count": "{count, plural, =0 {No places found} one {# place found} other {# places found}}",
+      "empty": "No places match \"{query}\". Check the spelling or try a nearby town.",
+      "error": "Places could not load.",
+      "minChars": "Type at least 2 letters.",
+      "busStandIn": "Bus stand, {district}",
+      "stopIn": "Stop, {district}"
+    }
   },
   "search": {
     "cta": "Search buses"
@@ -128,7 +154,12 @@
   },
   "auth": {
     "login": "Log in",
-    "enterOtp": "Enter the 6 digit code"
+    "enterOtp": "Enter the 6 digit code",
+    "forbidden": {
+      "title": "You do not have access to this page",
+      "hint": "Your account does not have the role this page needs. Ask your depot or admin if you think this is wrong.",
+      "home": "Go to your home page"
+    }
   },
   "status": {
     "UPCOMING": "Upcoming",
@@ -191,7 +222,8 @@
     "TRIP_NOT_STARTABLE": "This trip cannot be started yet.",
     "BUS_NOT_AVAILABLE": "Selected bus is not available.",
     "NETWORK": "You are offline. Your tickets still open. We will retry when you are back online.",
-    "INTERNAL": "Something went wrong on our side. Try again in a moment."
+    "INTERNAL": "Something went wrong on our side. Try again in a moment.",
+    "BAD_RESPONSE": "We got an answer we did not understand. Try again in a moment."
   },
   "notFound": {
     "title": "Page not found",
@@ -205,5 +237,63 @@
     "title": "Design System Gallery",
     "description": "Token and primitive components showcase for development.",
     "tokens": "Tokens and type scale"
+  },
+  "login": {
+    "intro": "We send a 6 digit code to your email or phone.",
+    "method": "Log in with",
+    "email": "Email",
+    "phone": "Phone",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "phoneLabel": "Mobile number",
+    "phoneHint": "10 digits, without +91.",
+    "phoneNote": "SMS codes work only in the test version for now. Use email if you do not get a code.",
+    "sendCode": "Send code",
+    "codeSent": "We sent a code to {target}. It works for {minutes} minutes.",
+    "digit": "Digit {position} of {total}",
+    "resendIn": "You can ask for a new code in {seconds} s.",
+    "resend": "Send a new code",
+    "changeEmail": "Change email",
+    "changePhone": "Change phone number",
+    "errors": {
+      "rateLimited": "Too many tries. Try again in {seconds} s.",
+      "email": "Enter a valid email address, like you@example.com.",
+      "phone": "Enter your 10 digit mobile number."
+    }
+  },
+  "account": {
+    "loadFailed": "Your account could not load",
+    "profile": {
+      "title": "Profile",
+      "name": "Name",
+      "namePlaceholder": "Your full name",
+      "saveName": "Save name",
+      "saved": "Name saved",
+      "nameInvalid": "Enter a name up to 100 letters.",
+      "email": "Email",
+      "phone": "Phone",
+      "notAdded": "Not added"
+    },
+    "preferences": {
+      "title": "Preferences"
+    },
+    "language": {
+      "saveFailed": "Language changed on this device. It could not be saved to your account."
+    },
+    "roles": {
+      "title": "Your roles",
+      "hint": "Open the screen for the role you want to use."
+    }
+  },
+  "roles": {
+    "CITIZEN": "Citizen",
+    "DRIVER": "Driver",
+    "CONDUCTOR": "Conductor",
+    "DEPOT_STAFF": "Depot staff",
+    "DEPOT_MANAGER": "Depot manager",
+    "DISTRICT_OFFICER": "District officer",
+    "TRANSPORT_OFFICER": "Transport officer",
+    "STATE_ADMIN": "State admin",
+    "SUPER_ADMIN": "Super admin"
   }
 }

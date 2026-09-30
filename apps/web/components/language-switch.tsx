@@ -1,10 +1,15 @@
 "use client";
 
-import { cn } from "@aptransit/ui";
+import { MeDto } from "@aptransit/shared";
+import { cn, toast } from "@aptransit/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { api } from "../lib/api";
 import { writePreferenceCookie } from "../lib/preferences";
+import { queryKeys } from "../lib/query-keys";
+import { useAuth } from "./auth-provider";
 
 // Each language is written in its own script, so it is never translated (docs/09, LanguageSwitch).
 const LANGUAGES = [
@@ -13,14 +18,22 @@ const LANGUAGES = [
 ] as const;
 
 export function LanguageSwitch() {
-  const t = useTranslations("common");
+  const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { status } = useAuth();
+  const queryClient = useQueryClient();
 
   const switchLocale = (next: (typeof LANGUAGES)[number]["code"]) => {
     if (next === locale) return;
     writePreferenceCookie("locale", next);
+    // Logged in: also save it on the account, so emails and other devices use it (docs/11 /account).
+    if (status === "authenticated") {
+      api("/me", { method: "PATCH", body: { preferredLocale: next }, schema: MeDto })
+        .then((me) => queryClient.setQueryData(queryKeys.me, me))
+        .catch(() => toast.error(t("account.language.saveFailed")));
+    }
     startTransition(() => {
       router.refresh();
     });
@@ -29,7 +42,7 @@ export function LanguageSwitch() {
   return (
     <div
       role="group"
-      aria-label={t("language")}
+      aria-label={t("common.language")}
       aria-busy={isPending || undefined}
       className="inline-flex items-center rounded-md border border-default bg-surface-raised p-0.5"
     >

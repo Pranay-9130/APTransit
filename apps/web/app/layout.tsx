@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { Providers } from "../components/providers";
 import "./globals.css";
 
 // Fonts are self hosted by Next at build time (no runtime Google calls). docs/09, Typography.
@@ -26,6 +27,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const cookieStore = await cookies();
   const theme = cookieStore.get("theme")?.value;
   const dataTheme = theme === "dark" || theme === "light" ? theme : undefined;
+  // D-016: httpOnly marker without a secret. Tells the client a silent refresh is worth trying.
+  const hasSession = cookieStore.has("apt_session");
 
   const locale = await getLocale();
   const messages = await getMessages();
@@ -39,7 +42,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     >
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
+          <Providers hasSession={hasSession}>{children}</Providers>
         </NextIntlClientProvider>
       </body>
     </html>

@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { ManagementShell } from "../../components/management-shell";
+import { RequirePermission } from "../../components/require-auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations();
@@ -37,7 +38,7 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
       items={navItems}
       scope={{ icon: Building2, label: t("common.depot"), value: t("common.notSelected") }}
     >
-      {children}
+      <RequirePermission anyOf={["ops:read"]}>{children}</RequirePermission>
     </ManagementShell>
   );
 }

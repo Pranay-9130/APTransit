@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { Clock, FileCheck, MapPin, Route, ScrollText, Shield, Users } from "lucide-react";
 import { ManagementShell } from "../../components/management-shell";
+import { RequirePermission } from "../../components/require-auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations();
@@ -25,7 +26,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <ManagementShell title={t("shell.admin")} baseHref="/admin" items={navItems}>
-      {children}
+      <RequirePermission anyOf={["network:write", "policy:write", "user:roles"]}>{children}</RequirePermission>
     </ManagementShell>
   );
 }

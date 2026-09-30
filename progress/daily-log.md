@@ -4,6 +4,60 @@ Newest day on top. Each dev adds their own block at the end of every day using `
 
 Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this week), **S3** polish (known issues list).
 
+## Day 04 · 2026-09-30 · Dev B
+
+**Done**
+- `packages/shared/src/fare.ts`: `calculateFare` (per km with a minimum, nearest rupee, plus reservation fee, free travel is zero) and `refundQuote` (docs/07 section 6 tiers, exact 24/12/1 hour edges, operator cancel refunds fees, free tickets never refund, policy cancellation fee). 25 tests.
+- `schemas/search.ts` and `schemas/network.ts`: every Dto and Query of the docs/06 network table, with real calendar date and HH:mm checks.
+- `apps/api/src/modules/network`: `/places/search`, `/districts`, `/districts/:id/bus-stands`, `/bus-stands/:id/routes`, `/routes/:id`, `/routes/:id/timetable`, `/search/trips`. All public; search and places at 60 per minute. Search is one raw SQL round trip (route stops, trips, bus type, fare rule valid that day) plus one seat count `groupBy`. Booking close from `booking.closeMinutesBefore`. 60 s in memory cache (`TtlCache`) for places, districts and settings.
+- D-016 built: `apt_session` marker set on verify and refresh, cleared on logout, failed refresh and refresh without a cookie.
+- Seed aligned with docs/19 (D-018): base fare 0, all timetables, batched trip inserts, stale timetables deactivated.
+- Tests: HTTP tests over an in memory docs/19 fixture (Kurnool to Vijayawada tomorrow gives the 6 trips, times and fares, Rs 541 Express; Telugu "కర్నూ" finds Kurnool; timetable first, last, next, frequency; one way pair gives nothing; invalid date gives VALIDATION_FAILED; 404s; rate limit headers). `network.int.test.ts` runs the real SQL on a seeded database.
+- Verified the real SQL on a local PGlite database (migrate deploy, seed twice, `seed.test`, `health.int.test`, `network.int.test` all green; search p95 under 250 ms).
+
+**Merged PRs**
+- none yet: `b/network-search` is committed locally, not pushed.
+
+**Carry over**
+- Run `network.int.test.ts` on the Neon test branch once `TEST_DATABASE_URL` exists.
+
+**Contract changes (packages/shared)**
+- New: `fare.ts`, `schemas/search.ts`, `schemas/network.ts`.
+
+**Bugs found**
+- Fixed: seed fares and timetables did not match docs/19 (S2).
+
+**Decisions needed**
+- D-016 (built), D-018.
+
+## Day 04 · 2026-09-30 · Dev A
+
+**Done**
+- `lib/api.ts`: same origin fetch wrapper, docs/06 error shape to `ApiError` (with `retryAfterSec`), every response validated with the shared Dto, 401 then one single flight refresh (shared promise in the tab, Web Lock across tabs, D-012), one retry, else session cleared and `/login?next=`.
+- Session: `AuthProvider` (token in memory only, silent refresh on load when the server sees `apt_session`, `login`, `logout` with a BroadcastChannel to other tabs), `useMe`, React Query defaults (1 retry for 5xx and network, none for 4xx).
+- `proxy.ts` guards the docs/08 login routes with the marker (D-016). Driver, conductor, ops, gov and admin layouts check `can()` after `useMe` and show a 403 state.
+- Home: PlaceCombobox (ARIA combobox, 200 ms debounce, 2 characters, English and Telugu, district and kind, recent places in localStorage, skeleton, empty and error with retry), swap, Today, Tomorrow and calendar (`DatePicker` and `OtpInput` added to `packages/ui` with tests), inline validation, `/search?from=&to=&date=`, quick actions. Form restored after Back.
+- Login: Email and Phone tabs (phone note), send code, 6 box OTP with paste, autofill and auto submit, resend timer, change target, error codes mapped (RATE_LIMITED shows the seconds). Goes to `next` or the role home. The account language applies after login.
+- Account: name (PATCH /me), email, masked phone, language (also PATCHes `preferredLocale` when logged in), theme light, dark, system, role list when there are several roles, Log out. Staff account menu shows the user and logs out for real.
+- Checked in the browser against the real API on local PGlite: 360, 768, 1280 px, English and Telugu, keyboard only home and calendar, wrong code, paste, reload keeps the session (one refresh call), citizen gets 403 on /ops, manager gets in, logout clears the marker.
+
+**Merged PRs**
+- none yet: `a/home-login` is committed locally on top of `b/network-search`, not pushed.
+
+**Carry over**
+- Scope switcher in ops and gov needs depot and district names (MeDto has only ids).
+- D-015 (short Telugu nav label) still open.
+
+**Contract changes (packages/shared)**
+- none from Dev A.
+
+**Bugs found**
+- Fixed today: calendar overflowed at 360 px and opened on the month arrow; dialog close button was 28 px (now 44); focus lost after a wrong OTP; logout on a guarded page went to /login instead of /; locale from the account did not reach the root layout after login (now a full load).
+- Known (S3): the 403 state has no `h1` (EmptyState renders an `h3`).
+
+**Decisions needed**
+- D-017.
+
 ## Day 03 review · 2026-09-27 · fixes before Day 4
 
 **Done**

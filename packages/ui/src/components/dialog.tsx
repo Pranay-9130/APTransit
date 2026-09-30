@@ -50,7 +50,7 @@ export const DialogContent = React.forwardRef<
       {children}
       {!hideCloseButton && (
         <DialogPrimitive.Close
-          className="absolute right-4 top-4 rounded-sm p-1 text-muted transition-opacity hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="absolute right-2 top-2 inline-flex size-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label={closeLabel}
         >
           <X className="h-5 w-5" />

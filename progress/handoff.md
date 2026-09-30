@@ -14,12 +14,41 @@ Read order for a new session:
 
 ---
 
-## Current state (Day 3 reviewed and fixed, 2026-09-27)
+## Current state (Day 4 built, 2026-09-30)
 
 ### Git
 
 | Branch | Contains | Status |
 | --- | --- | --- |
+| `main` | Day 1 to Day 3 plus the Day 3 review fixes | Baseline |
+| `b/network-search` | Day 4 Dev B: fare.ts, network and search APIs, D-016 marker cookie, seed aligned with docs/19 | Committed locally, not pushed. Merge first |
+| `a/home-login` | Day 4 Dev A, branched from `b/network-search`: API client, session, proxy guard, home, login, account, OtpInput, DatePicker | Committed locally, not pushed. Merge second |
+
+### Works today (verified 2026-09-30)
+
+- `pnpm lint`, `pnpm i18n:check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm check:dashes` pass on Windows (Node 22.20, pnpm 11.10).
+- Tests: shared 91, api 108 (+6 database tests skipped without `TEST_DATABASE_URL`), ui 21, web 33, scripts 6.
+- The 6 database tests (seed twice, health, real search SQL with p95 under 250 ms) passed against a local PGlite database, not Neon yet.
+- Public network API: places search (English and Telugu, bus stands first), districts, bus stands, routes, timetable, trip search with fares from `fare.ts` and seats left. Kurnool to Vijayawada tomorrow gives the 6 docs/19 trips, Express Rs 541.
+- Web, checked in the browser against the real API: home (combobox, swap, date chips and calendar, validation, form kept after Back), login (email OTP, paste, wrong code, resend timer), session kept after a full reload with one refresh call, `next` redirect, account (name, language saved to the account, theme, logout), 403 for a citizen on `/ops`, manager allowed. 360, 768, 1280 px, English and Telugu.
+
+### Not done yet
+
+| Item | Why | When |
+| --- | --- | --- |
+| Neon, Upstash, Razorpay test, Resend accounts, real `.env` files | Must be created by a human (docs/15) | Before deployment and e2e in CI |
+| `TEST_DATABASE_URL` in CI | Needs the Neon test branch | CI setup |
+| `/search` results page (home already links to it) | Scheduled | Day 5 (Dev A) |
+| Ops and gov scope switcher with names | MeDto has only depot and district ids | Needs a small `/me` or scope endpoint, decide at sync |
+| Short Telugu label for "Track bus" | D-015, needs a native speaker | Open |
+| 403 state has no `h1` (EmptyState renders `h3`) | S3 polish | When EmptyState gets a heading level prop |
+| Worker queues, seat holds | Scheduled | Day 5 (Dev B) |
+
+### Decisions
+
+All in `progress/decisions-log.md`. D-012 and D-016 are built as proposed, D-013 and D-014 unchanged, D-015 open, D-017 (web deps) and D-018 (network contract details, seed alignment) new. Review all at the Day 4 sync.
+
+--- | --- | --- |
 | `main` | Day 1 to Day 3 (PR #1 day-2, PR #2 day-3) plus the Day 3 review fixes (`bf95d63`, pushed directly at the owner's request; see `progress/daily-log.md`, "Day 03 review") | Baseline |
 
 **Day 4 starts from `main`:** `a/home-login` (Dev A), `b/network-search` (Dev B). Agree D-016 first (the web route guard cannot see `apt_rt`).
@@ -69,7 +98,8 @@ packages/shared                zod contracts used by web and api. Compiled to Co
   src/errors.ts                ErrorCode, ERROR_HTTP_STATUS, ErrorResponse
   src/status.ts                STATUS_MAP, deriveTripDisplayStatus, busDisplayStatus, TICKET_STATUS_MAP, colourOfDay
   src/money.ts                 paise helpers, Paise schema
-  src/schemas/health.ts        HealthDto
+  src/fare.ts                  calculateFare, refundQuote (the only fare math)
+  src/schemas/                 health, auth, seat-layout, search (SearchTripsQuery, TripSummaryDto), network (places, districts, routes, timetable)
 packages/ui                    design tokens and (from Day 2) components. Source only, compiled by Next
   src/tokens.css               ALL raw colour values live here and nowhere else
   src/cn.ts                    class joiner that knows our token names
@@ -84,6 +114,7 @@ apps/api                       NestJS 11
   src/prisma/                  PrismaService (Prisma 7 + pg adapter, lazy connect), global module
   src/redis/                   RedisService (ioredis, lazy, TLS ready), global module
   src/modules/health/          the reference module: controller, service, tests
+  src/modules/network/         Day 4 public network and search: repository (queries), service (rules), trip-summary.ts
   src/generated/prisma/        generated Prisma client (git ignored, created by `pnpm --filter api generate`)
   prisma/schema.prisma         full schema v1 from docs/05 (seed in prisma/seed.ts)
   prisma/migrations/           20260923000000_init
@@ -92,7 +123,11 @@ apps/api                       NestJS 11
 apps/web                       Next.js 16 App Router
   app/layout.tsx               fonts (Inter, Noto Sans Telugu), metadata title template
   app/globals.css              Tailwind + tokens + @source for packages/ui
-  app/(citizen)/               citizen shell, placeholder home (Day 4 replaces it)
+  app/(citizen)/               citizen shell, home (home-search.tsx), account
+  app/(auth)/login/            login (email or phone OTP)
+  proxy.ts                     route guard on the apt_session marker (D-016)
+  lib/                         api.ts (fetch wrapper, refresh), session.ts (token store), roles.ts, recent-places.ts, query-keys.ts
+  components/                  providers, auth-provider (useAuth, useMe), require-auth (RequireAuth, RequirePermission), place-combobox
   app/{driver,conductor,ops,gov,admin}/  staff shells (components/field-shell.tsx, management-shell.tsx)
   i18n/request.ts              locale from cookie, then Accept-Language; merges web and shared messages
   next.config.ts               /api/v1 rewrite to API_URL, agentRules off, transpilePackages ui
@@ -200,6 +235,11 @@ The Next lint config includes the React Compiler rules. `setState` directly insi
 | "Event handlers cannot be passed to Client Component props" | A `packages/ui` component with handlers lacks `"use client"` | Add the directive at the top of the component file |
 | Page title "X · AP TransitOS · AP TransitOS" | Nested layout used `title.default` under the root template | Use `title.absolute` in nested layouts |
 | React Compiler lint: "This value cannot be modified" on `document.cookie` | Writing a global inside a component | Use `lib/preferences.ts` |
+| Web page 401 loops or never refreshes | Calling fetch directly | Always go through `api()` in `lib/api.ts`; pass `redirectOn401: false` for public data |
+| `useSearchParams` breaks `pnpm build` (needs Suspense) | Client component on a static page | Read `window.location` in an effect, or take `searchParams` in the server page and pass it down |
+| Form reads localStorage and hydration fails | Server and first client render differ | Render the form only after mount (`useSyncExternalStore` mounted flag, see `home-search.tsx`) |
+| Local API waits about 4 s per request | No Redis running, commands time out, then fail open | Expected without Upstash. Everything still works |
+| Want a real database without Neon | No Postgres on the machine | `npx` PGlite socket server in your scratch folder, point `DATABASE_URL` and `DIRECT_URL` at it, `prisma migrate deploy`, `pnpm db:seed`. Never commit it |
 | API test gets 429 unexpectedly | Tests share one IP and the 10 per IP per hour OTP limit | Reset the IP counter in the fake Redis (see `resetIpLimit` in `test/auth.test.ts`) |
 
 ---
@@ -250,23 +290,22 @@ pnpm audit --prod --audit-level high
 - Dev B: OTP auth, refresh rotation, guards, rate limits, audit.
 - The review on 2026-09-27 fixed the bugs listed in `progress/daily-log.md` ("Day 03 review").
 
-## Day 4 notes
+## Day 4 notes (done, kept for history)
 
-### Dev A (home, login, account)
+- Dev B: fare.ts, network and search endpoints, apt_session marker (D-016), seed aligned with docs/19 (D-018).
+- Dev A: api client and session, proxy guard, home, login, account, OtpInput and DatePicker in packages/ui.
 
-- **Next 16 renamed `middleware.ts` to `proxy.ts`** (export `proxy`). Read `apps/web/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md` first.
-- **Blocker for the route guard (D-016):** `apt_rt` has `Path=/api/v1/auth` (docs/06), so browsers never send it with `/tickets` or `/ops`. The proxy cannot see it. Agree D-016 at the start of Day 4 (Dev B sets a path `/` marker cookie, Dev A checks that one).
-- Refresh single flight must also work **across tabs** (D-012): a losing tab gets 401. Use `navigator.locks.request("apt-refresh", ...)` around the refresh call, then retry once.
-- Errors: map `error.code` to `t("errors." + code)`. `RATE_LIMITED` comes with `details.retryAfter` (seconds) and a `Retry-After` header.
-- Staff shells already have `AccountMenu` (swap the Log out link for `logout()`), and `ManagementShell` takes a `scope` prop for the switcher.
-- `LanguageSwitch` writes the cookie through `lib/preferences.ts`; add the `PATCH /me` call there when logged in.
-- Server layouts cannot pass component functions to client components (icons as elements). `packages/ui` interactive components are `"use client"`.
-- Citizen top bar hides the theme toggle below `md` (not in docs/11); the account page gets light, dark, system.
+## Day 5 notes
 
-### Dev B (network and search APIs)
+### Dev A (search results, bus details, timetable)
 
-- Public endpoints: `@Public()` plus `@Throttle({ default: { limit: 60, ttl: 60_000 } })` on `/search/trips` and `/places/search` (docs/12). The throttler counts per user id when a Bearer token is present, else per IP.
-- Query validation: `@Query(new ZodValidationPipe(SearchTripsQuery)) query: SearchTripsQuery`.
-- In memory cache for districts and places (60 s): a plain `Map` with expiry in the service is enough; no Redis.
-- Tests: copy the fake Prisma and Redis pattern from `test/auth.test.ts`. The fake Redis needs `status: "ready"` and `eval` (see the mock) or rate limits fail open silently.
-- Remember `pnpm --filter @aptransit/shared build` after changing shared schemas if the API does not see them.
+- Read the query string with the server page `searchParams` prop and pass it to a client component. The home form already sends `/search?from=<stopId>&to=<stopId>&date=YYYY-MM-DD`.
+- Fetch with `api(path, { schema, query, redirectOn401: false })` inside `useQuery`. Response schemas: `SearchTripsResponse`, `TimetableDto`, `RouteDto` from `@aptransit/shared`.
+- `farePaise` is the total per passenger, reservation fee included. Times are ISO UTC: show them with the shared IST helpers.
+- Place names: `placeName(place, locale)` in `components/place-combobox.tsx`.
+
+### Dev B (trip details, seats, holds)
+
+- Reuse `NetworkRepository.tripRows` (it already joins the fare rule for a stop pair) and `toTripSummary`.
+- Seats: `SEAT_TAKING_STATUSES` in the repository; add Redis holds on top.
+- New endpoints that read a lot: put queries in the repository so HTTP tests can use `test/network-fixture.ts`.

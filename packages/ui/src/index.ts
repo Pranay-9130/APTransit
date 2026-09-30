@@ -20,3 +20,5 @@ export * from "./components/toast";
 export * from "./components/tabs";
 export * from "./components/tooltip";
 export * from "./components/dropdown-menu";
+export * from "./components/otp-input";
+export * from "./components/date-picker";

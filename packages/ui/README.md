@@ -99,3 +99,9 @@ import { cn } from "@aptransit/ui";
 Components with event handlers or Radix state start with `"use client"` so server pages can render them. EmptyState, Card, Field, Input, Textarea, Skeleton, Spinner and StatusBadge stay server safe (server pages pass them icon components). Border colours are `border-default` and `border-strong` (not `border-border-*`, which do not exist).
 
 Put each component in `src/components/<name>.tsx`, export it from `src/index.ts`, and follow `docs/09` (variants, states, keyboard, dark mode). Text always comes in through props or `children`, never hardcoded. Tests live next to the component (test setup arrives with the first component, see `progress/handoff.md`, Day 2 notes).
+
+Day 4 additions:
+
+- `OtpInput`: one box per digit, paste and SMS autofill spread over the boxes, `autocomplete="one-time-code"` on the first box, `onComplete` for auto submit. Labels come in as `groupLabel` and `digitLabel(position, total)`.
+- `DatePicker`: Today and Tomorrow chips plus a `Calendar` in a Dialog (ARIA grid keys: arrows, Home, End, Page Up, Page Down). Dates are `YYYY-MM-DD` strings; the caller passes `today` (IST) and `locale`, so the component never reads the device clock. `addDays` and `monthGrid` are exported.
+- Dialog close button is now a 44 px target.

@@ -118,7 +118,7 @@ The only way to change a locked doc in `docs/`. Add an entry, agree at the daily
 - **Doc affected:** docs/12-security.md (A07), docs/06-api-contract.md (POST /auth/refresh)
 - **Problem:** two tabs refreshing with the same cookie at the same moment could both rotate (two live tokens), or, with strict reuse detection, log the user out everywhere.
 - **Decision:** the token is claimed atomically. The loser gets 401 without revoking the family; any later use of that old token is reuse and revokes the family. The web client should single flight refresh across tabs too (Web Locks or BroadcastChannel) on Day 4.
-- **Status:** Proposed, review at the Day 4 sync
+- **Status:** Proposed. Day 4: web side built (`navigator.locks` "apt-refresh" around the refresh call, see `apps/web/lib/api.ts`). Confirm at the Day 4 sync
 
 ### D-013 · Refresh cookie drops Secure only in local development
 - **Date:** 2026-09-27
@@ -150,7 +150,23 @@ The only way to change a locked doc in `docs/`. Add an entry, agree at the daily
 - **Doc affected:** docs/06-api-contract.md (Basics, Auth), docs/08-roles-permissions.md (web route guards), prompts/day-04.md (Dev A step 3)
 - **Problem:** Day 4 asks the Next proxy to redirect when the `apt_rt` cookie is missing, but `apt_rt` has `Path=/api/v1/auth`, so the browser never sends it with page requests. The guard would always redirect.
 - **Decision:** open. Proposal: the API also sets `apt_session=1` (httpOnly, Secure outside development, SameSite=Lax, Path=/, same max age) on verify and refresh, and clears it on logout and failed refresh. It carries no secret; the proxy only checks it exists. Widening `apt_rt` to `Path=/` instead would send the refresh token with every request.
-- **Status:** Proposed, agree before Day 4 work starts
+- **Status:** Built on Day 4 exactly as proposed (API sets and clears `apt_session`, `apps/web/proxy.ts` checks it, the root layout uses it to decide on a silent refresh). Confirm at the Day 4 sync, then docs/06 and docs/08 get a line each
+
+### D-017 · Web gets zod, @tanstack/react-query and vitest
+- **Date:** 2026-09-30
+- **Raised by:** Day 4
+- **Doc affected:** docs/04-tech-stack.md (none changed, all three are listed)
+- **Problem:** `apps/web` had none of them. The API client types response schemas with zod, the session uses React Query, and the client, roles and proxy need unit tests.
+- **Decision:** add `zod` 4.6.5 (same pin as shared and api), `@tanstack/react-query` 5 and `vitest` 4.1.11 (dev) to `apps/web`. `apps/web` now has a `test` script, so Turbo runs it.
+- **Status:** Proposed, review at the Day 4 sync
+
+### D-018 · Day 4 network contract details and seed alignment
+- **Date:** 2026-09-30
+- **Raised by:** Day 4
+- **Doc affected:** docs/06-api-contract.md (Network, search, timetable), docs/19-seed-data.md
+- **Problem:** docs/06 names the shapes but not every field. The Day 2 seed also differed from docs/19: `baseFarePaise` equal to the minimum fare (Kurnool to Vijayawada Express came out at Rs 561, not Rs 541) and only part of the docs/19 timetables.
+- **Decision:** (1) `BusStandRouteDto.destination` is `{ id, nameEn, nameTe }`; `RouteDto` has `origin`, `destination` and ordered `stops[]` (`stopId, seq, nameEn, nameTe, kind, lat, lng, kmFromOrigin, minutesFromOrigin, isBoarding, isDropping`); `TimetableDto` also returns `date` (defaults to today IST); a place `id` is the stop id used by search. (2) `TripSummaryDto.farePaise` is the total per passenger including the reservation fee. (3) Seed fixed to docs/19: base fare 0, fare rules updated on re-seed, all docs/19 timetables (456 incl. reverse), trips inserted in batches, older timetables deactivated. Run `pnpm db:reset` (or `pnpm db:seed`) on every branch.
+- **Status:** Proposed, review at the Day 4 sync
 
 ## Parked (ideas outside the 20 day scope)
 
