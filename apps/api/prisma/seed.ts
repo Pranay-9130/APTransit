@@ -11,6 +11,7 @@ import {
   DEPOTS,
   DISTRICTS,
   ROUTE_DEFS,
+  TIMETABLE_DEFS,
   STOPS,
 } from "./seed-data";
 
@@ -212,7 +213,18 @@ export async function runSeed(): Promise<void> {
     const existingRule = await prisma.fareRule.findFirst({
       where: { busTypeId: row.id },
     });
-    if (!existingRule) {
+    if (existingRule) {
+      // Keep the demo fares in line with docs/19 (base fare 0, per km with a minimum).
+      await prisma.fareRule.update({
+        where: { id: existingRule.id },
+        data: {
+          baseFarePaise: bt.baseFarePaise,
+          perKmPaise: bt.perKmPaise,
+          minFarePaise: bt.minFarePaise,
+          reservationFeePaise: bt.reservationFeePaise,
+        },
+      });
+    } else {
       await prisma.fareRule.create({
         data: {
           busTypeId: row.id,
@@ -589,71 +601,8 @@ export async function runSeed(): Promise<void> {
   }
   console.log(`Buses seeded: ${buses.length}`);
 
-  // 12. Timetables (docs/19)
-  const timetableDefs = [
-    // KNL-VJA-01 departures: 05:30, 06:30, 08:00, 10:00, 13:00, 21:30
-    { routeCode: "KNL-VJA-01", departureLocal: "05:30", serviceType: "EXPRESS" },
-    { routeCode: "KNL-VJA-01", departureLocal: "06:30", serviceType: "EXPRESS" },
-    { routeCode: "KNL-VJA-01", departureLocal: "08:00", serviceType: "SUPER_LUXURY" },
-    { routeCode: "KNL-VJA-01", departureLocal: "10:00", serviceType: "EXPRESS" },
-    { routeCode: "KNL-VJA-01", departureLocal: "13:00", serviceType: "ULTRA_DELUXE" },
-    { routeCode: "KNL-VJA-01", departureLocal: "21:30", serviceType: "AMARAVATI_AC" },
-
-    // Reverse VJA-KNL-02 departures: offset 30 min
-    { routeCode: "VJA-KNL-02", departureLocal: "06:00", serviceType: "EXPRESS" },
-    { routeCode: "VJA-KNL-02", departureLocal: "07:00", serviceType: "EXPRESS" },
-    { routeCode: "VJA-KNL-02", departureLocal: "08:30", serviceType: "SUPER_LUXURY" },
-    { routeCode: "VJA-KNL-02", departureLocal: "10:30", serviceType: "EXPRESS" },
-    { routeCode: "VJA-KNL-02", departureLocal: "13:30", serviceType: "ULTRA_DELUXE" },
-    { routeCode: "VJA-KNL-02", departureLocal: "22:00", serviceType: "AMARAVATI_AC" },
-
-    // KNL-TPT-01 departures: 06:00, 09:00, 21:00
-    { routeCode: "KNL-TPT-01", departureLocal: "06:00", serviceType: "EXPRESS" },
-    { routeCode: "KNL-TPT-01", departureLocal: "09:00", serviceType: "SUPER_LUXURY" },
-    { routeCode: "KNL-TPT-01", departureLocal: "21:00", serviceType: "INDRA_AC" },
-
-    // Reverse TPT-KNL-02 departures
-    { routeCode: "TPT-KNL-02", departureLocal: "06:30", serviceType: "EXPRESS" },
-    { routeCode: "TPT-KNL-02", departureLocal: "09:30", serviceType: "SUPER_LUXURY" },
-    { routeCode: "TPT-KNL-02", departureLocal: "21:30", serviceType: "INDRA_AC" },
-
-    // KNL-ATP-01 departures
-    { routeCode: "KNL-ATP-01", departureLocal: "06:00", serviceType: "PALLEVELUGU" },
-    { routeCode: "KNL-ATP-01", departureLocal: "08:00", serviceType: "EXPRESS" },
-    { routeCode: "KNL-ATP-01", departureLocal: "10:00", serviceType: "PALLEVELUGU" },
-    { routeCode: "KNL-ATP-01", departureLocal: "14:00", serviceType: "EXPRESS" },
-    { routeCode: "KNL-ATP-01", departureLocal: "18:00", serviceType: "PALLEVELUGU" },
-
-    // Reverse ATP-KNL-02
-    { routeCode: "ATP-KNL-02", departureLocal: "06:30", serviceType: "PALLEVELUGU" },
-    { routeCode: "ATP-KNL-02", departureLocal: "08:30", serviceType: "EXPRESS" },
-    { routeCode: "ATP-KNL-02", departureLocal: "10:30", serviceType: "PALLEVELUGU" },
-    { routeCode: "ATP-KNL-02", departureLocal: "14:30", serviceType: "EXPRESS" },
-
-    // KNL-NDL-01 departures
-    { routeCode: "KNL-NDL-01", departureLocal: "06:00", serviceType: "PALLEVELUGU" },
-    { routeCode: "KNL-NDL-01", departureLocal: "07:30", serviceType: "ULTRA_PALLEVELUGU" },
-    { routeCode: "KNL-NDL-01", departureLocal: "09:00", serviceType: "PALLEVELUGU" },
-    { routeCode: "KNL-NDL-01", departureLocal: "12:00", serviceType: "PALLEVELUGU" },
-
-    // Reverse NDL-KNL-02
-    { routeCode: "NDL-KNL-02", departureLocal: "06:30", serviceType: "PALLEVELUGU" },
-    { routeCode: "NDL-KNL-02", departureLocal: "08:00", serviceType: "ULTRA_PALLEVELUGU" },
-    { routeCode: "NDL-KNL-02", departureLocal: "09:30", serviceType: "PALLEVELUGU" },
-
-    // VJA-GNT-01 departures
-    { routeCode: "VJA-GNT-01", departureLocal: "06:00", serviceType: "METRO_EXPRESS" },
-    { routeCode: "VJA-GNT-01", departureLocal: "07:00", serviceType: "METRO_EXPRESS" },
-    { routeCode: "VJA-GNT-01", departureLocal: "08:00", serviceType: "METRO_EXPRESS" },
-    { routeCode: "GNT-VJA-02", departureLocal: "06:30", serviceType: "METRO_EXPRESS" },
-    { routeCode: "GNT-VJA-02", departureLocal: "07:30", serviceType: "METRO_EXPRESS" },
-
-    // VSP-SMC-01 departures
-    { routeCode: "VSP-SMC-01", departureLocal: "06:00", serviceType: "CITY_ORDINARY" },
-    { routeCode: "VSP-SMC-01", departureLocal: "07:00", serviceType: "CITY_ORDINARY" },
-    { routeCode: "SMC-VSP-02", departureLocal: "06:30", serviceType: "CITY_ORDINARY" },
-    { routeCode: "SMC-VSP-02", departureLocal: "07:30", serviceType: "CITY_ORDINARY" },
-  ];
+  // 12. Timetables (docs/19, TIMETABLE_DEFS in seed-data.ts)
+  const timetableDefs = TIMETABLE_DEFS;
 
   const timetableInputs: TimetableInput[] = [];
   for (const td of timetableDefs) {
@@ -699,6 +648,11 @@ export async function runSeed(): Promise<void> {
       durationMinutes: route.durationMinutes,
     });
   }
+  // Timetables from an older seed that docs/19 no longer lists stop generating trips
+  await prisma.timetable.updateMany({
+    where: { id: { notIn: timetableInputs.map((t) => t.id) }, isActive: true },
+    data: { isActive: false },
+  });
   console.log(`Timetables seeded: ${timetableInputs.length}`);
 
   // 13. Generate trips for today to today plus 7 days
@@ -713,11 +667,11 @@ export async function runSeed(): Promise<void> {
   // Available buses at Kurnool for initial assignment
   const availableBuses = buses.filter((b) => b.depotId === knlDepotId && b.status !== "BREAKDOWN" && b.status !== "MAINTENANCE");
 
-  let busAssignIndex = 0;
-  for (const t of tripRows) {
-    const trip = await prisma.trip.upsert({
-      where: { code: t.code },
-      create: {
+  // docs/19 has about 450 trips a day, so insert in batches (one row at a time takes minutes on Neon).
+  const BATCH = 500;
+  for (let i = 0; i < tripRows.length; i += BATCH) {
+    await prisma.trip.createMany({
+      data: tripRows.slice(i, i + BATCH).map((t) => ({
         code: t.code,
         timetableId: t.timetableId,
         routeId: t.routeId,
@@ -728,35 +682,33 @@ export async function runSeed(): Promise<void> {
         status: t.status,
         delayMinutes: t.delayMinutes,
         hasOpenIncident: t.hasOpenIncident,
-      },
-      update: {
-        scheduledDepartureAt: t.scheduledDepartureAt,
-        scheduledArrivalAt: t.scheduledArrivalAt,
-      },
+      })),
+      skipDuplicates: true,
     });
+  }
 
-    // Initial assignment if a bus is available
-    if (availableBuses.length > 0) {
-      const assignedBus = availableBuses[busAssignIndex % availableBuses.length]!;
-      busAssignIndex++;
-
-      const existingAssign = await prisma.tripAssignment.findFirst({
-        where: { tripId: trip.id, endedAt: null },
+  // Initial assignment for trips that have none yet (idempotent on re-run)
+  if (availableBuses.length > 0) {
+    const assignedById = userMap.get("manager.knl@aptransit.test")!;
+    let busAssignIndex = 0;
+    for (let i = 0; i < tripRows.length; i += BATCH) {
+      const unassigned = await prisma.trip.findMany({
+        where: { code: { in: tripRows.slice(i, i + BATCH).map((t) => t.code) }, assignments: { none: {} } },
+        select: { id: true, scheduledDepartureAt: true },
+        orderBy: { scheduledDepartureAt: "asc" },
       });
-
-      if (!existingAssign) {
-        await prisma.tripAssignment.create({
-          data: {
-            tripId: trip.id,
-            busId: assignedBus.id,
-            driverId: driverRow.id,
-            conductorId: conductorRow.id,
-            reason: "INITIAL",
-            assignedById: userMap.get("manager.knl@aptransit.test")!,
-            startedAt: t.scheduledDepartureAt,
-          },
-        });
-      }
+      if (unassigned.length === 0) continue;
+      await prisma.tripAssignment.createMany({
+        data: unassigned.map((trip) => ({
+          tripId: trip.id,
+          busId: availableBuses[busAssignIndex++ % availableBuses.length]!.id,
+          driverId: driverRow.id,
+          conductorId: conductorRow.id,
+          reason: "INITIAL" as const,
+          assignedById,
+          startedAt: trip.scheduledDepartureAt,
+        })),
+      });
     }
   }
   console.log("Trips and initial assignments seeded.");

@@ -13,6 +13,7 @@ import { validateEnv } from "./config/env";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
+import { NetworkModule } from "./modules/network/network.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
 import { RedisService } from "./redis/redis.service";
@@ -42,6 +43,7 @@ import { RedisService } from "./redis/redis.service";
     AuditModule,
     AuthModule,
     HealthModule,
+    NetworkModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

@@ -9,3 +9,6 @@ export * from "./permissions";
 export * from "./schemas/health";
 export * from "./schemas/seat-layout";
 export * from "./schemas/auth";
+export * from "./fare";
+export * from "./schemas/search";
+export * from "./schemas/network";

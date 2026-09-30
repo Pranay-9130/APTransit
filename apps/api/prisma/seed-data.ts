@@ -209,6 +209,7 @@ export interface BusTypeSeed {
   perKmPaise: number;
   minFarePaise: number;
   reservationFeePaise: number;
+  /** Flat part added before the per km fare. 0 for every demo type (docs/19 fares are per km with a minimum). */
   baseFarePaise: number;
   layout: {
     rows: number;
@@ -234,7 +235,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 110,
     minFarePaise: 1000,
     reservationFeePaise: 0,
-    baseFarePaise: 1000,
+    baseFarePaise: 0,
     layout: { rows: 12, columns: 5, aisleIndex: 3, labels: makeSeatLabels(60) },
   },
   {
@@ -247,7 +248,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 120,
     minFarePaise: 1000,
     reservationFeePaise: 0,
-    baseFarePaise: 1000,
+    baseFarePaise: 0,
     layout: { rows: 12, columns: 5, aisleIndex: 3, labels: makeSeatLabels(60) },
   },
   {
@@ -260,7 +261,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 100,
     minFarePaise: 1000,
     reservationFeePaise: 0,
-    baseFarePaise: 1000,
+    baseFarePaise: 0,
     layout: { rows: 10, columns: 5, aisleIndex: 3, labels: makeSeatLabels(50) },
   },
   {
@@ -273,7 +274,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 130,
     minFarePaise: 1500,
     reservationFeePaise: 0,
-    baseFarePaise: 1500,
+    baseFarePaise: 0,
     layout: { rows: 10, columns: 4, aisleIndex: 2, labels: makeSeatLabels(40) },
   },
   {
@@ -286,7 +287,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 140,
     minFarePaise: 2000,
     reservationFeePaise: 3000,
-    baseFarePaise: 2000,
+    baseFarePaise: 0,
     layout: { rows: 11, columns: 4, aisleIndex: 2, labels: makeSeatLabels(44) },
   },
   {
@@ -299,7 +300,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 160,
     minFarePaise: 3000,
     reservationFeePaise: 3000,
-    baseFarePaise: 3000,
+    baseFarePaise: 0,
     layout: { rows: 10, columns: 4, aisleIndex: 2, labels: makeSeatLabels(40) },
   },
   {
@@ -312,7 +313,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 180,
     minFarePaise: 4000,
     reservationFeePaise: 3000,
-    baseFarePaise: 4000,
+    baseFarePaise: 0,
     layout: { rows: 10, columns: 4, aisleIndex: 2, labels: makeSeatLabels(40) },
   },
   {
@@ -325,7 +326,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 210,
     minFarePaise: 5000,
     reservationFeePaise: 3000,
-    baseFarePaise: 5000,
+    baseFarePaise: 0,
     layout: { rows: 10, columns: 4, aisleIndex: 2, labels: makeSeatLabels(40) },
   },
   {
@@ -338,7 +339,7 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 250,
     minFarePaise: 6000,
     reservationFeePaise: 3000,
-    baseFarePaise: 6000,
+    baseFarePaise: 0,
     layout: { rows: 11, columns: 4, aisleIndex: 2, labels: makeSeatLabels(44) },
   },
   {
@@ -351,7 +352,84 @@ export const BUS_TYPES: BusTypeSeed[] = [
     perKmPaise: 270,
     minFarePaise: 6000,
     reservationFeePaise: 3000,
-    baseFarePaise: 6000,
+    baseFarePaise: 0,
     layout: { rows: 11, columns: 4, aisleIndex: 2, labels: makeSeatLabels(44) },
   },
 ];
+
+export interface TimetableSeedDef {
+  routeCode: string;
+  departureLocal: string;
+  serviceType: BusTypeSeed["serviceType"];
+}
+
+function toMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number) as [number, number];
+  return h * 60 + m;
+}
+
+function toHhmm(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h < 10 ? "0" : ""}${h}:${m < 10 ? "0" : ""}${m}`;
+}
+
+function everyMinutes(first: string, last: string, stepMin: number): string[] {
+  const out: string[] = [];
+  for (let t = toMinutes(first); t <= toMinutes(last); t += stepMin) out.push(toHhmm(t));
+  return out;
+}
+
+const FORWARD_TIMETABLES: { routeCode: string; reverseCode: string; departures: [string, BusTypeSeed["serviceType"]][] }[] = [
+  {
+    routeCode: "KNL-VJA-01",
+    reverseCode: "VJA-KNL-02",
+    departures: [
+      ["05:30", "EXPRESS"],
+      ["06:30", "EXPRESS"],
+      ["08:00", "SUPER_LUXURY"],
+      ["10:00", "EXPRESS"],
+      ["13:00", "ULTRA_DELUXE"],
+      ["21:30", "AMARAVATI_AC"],
+    ],
+  },
+  {
+    routeCode: "KNL-TPT-01",
+    reverseCode: "TPT-KNL-02",
+    departures: [
+      ["06:00", "EXPRESS"],
+      ["09:00", "SUPER_LUXURY"],
+      ["21:00", "INDRA_AC"],
+    ],
+  },
+  {
+    routeCode: "KNL-ATP-01",
+    reverseCode: "ATP-KNL-02",
+    departures: everyMinutes("05:00", "20:00", 60).map((t, i) => [t, i % 2 === 0 ? "PALLEVELUGU" : "EXPRESS"]),
+  },
+  {
+    routeCode: "KNL-NDL-01",
+    reverseCode: "NDL-KNL-02",
+    departures: everyMinutes("05:00", "21:00", 30).map((t, i) => [t, i % 4 === 3 ? "ULTRA_PALLEVELUGU" : "PALLEVELUGU"]),
+  },
+  {
+    routeCode: "VJA-GNT-01",
+    reverseCode: "GNT-VJA-02",
+    departures: everyMinutes("05:30", "22:00", 15).map((t) => [t, "METRO_EXPRESS"]),
+  },
+  {
+    routeCode: "VSP-SMC-01",
+    reverseCode: "SMC-VSP-02",
+    departures: everyMinutes("05:30", "22:30", 10).map((t) => [t, "CITY_ORDINARY"]),
+  },
+];
+
+/** docs/19 "Timetables": forward departures, and the reverse route with the same pattern 30 min later. */
+export const TIMETABLE_DEFS: TimetableSeedDef[] = FORWARD_TIMETABLES.flatMap(({ routeCode, reverseCode, departures }) => [
+  ...departures.map(([departureLocal, serviceType]) => ({ routeCode, departureLocal, serviceType })),
+  ...departures.map(([departureLocal, serviceType]) => ({
+    routeCode: reverseCode,
+    departureLocal: toHhmm(toMinutes(departureLocal) + 30),
+    serviceType,
+  })),
+]);

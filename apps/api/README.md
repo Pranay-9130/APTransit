@@ -48,12 +48,16 @@ src/
     guards/app-throttler.guard.ts      global: 120 per user or IP per minute, @Throttle to tighten
     interceptors/audit.interceptor.ts  writes the audit row for routes marked @Audit(action)
     pipes/zod-validation.pipe.ts       new ZodValidationPipe(Schema) on @Body, @Query, @Param
-    services/             ScopeService (depot, district checks), RateLimitService (OTP target limits), redis-window
+    services/             ScopeService (depot, district checks), RateLimitService (OTP target limits), redis-window,
+                          TtlCache (small per process cache with TTL and size cap)
     throttler/            Redis storage for @nestjs/throttler (one Lua command per hit, fails open)
     logger.ts             pino params: request ids, redaction list, health requests not logged
   prisma/                 PrismaService (Prisma 7, pg adapter, pooled URL, lazy connect)
   redis/                  RedisService (ioredis, lazy connect, throttled error logs)
   modules/<area>/         one folder per feature module (health is the reference)
+  modules/network/        public places, districts, bus stands, routes, timetable, search (Day 4).
+                          NetworkRepository holds every query (search is one raw SQL round trip plus one
+                          seat count groupBy), NetworkService holds the rules, trip-summary.ts builds TripSummaryDto
   generated/prisma/       generated client, git ignored
 prisma/
   schema.prisma           mirrors docs/05 (only settings so far)
@@ -64,6 +68,9 @@ test/
   test-env.ts             complete fake env (add every new env var here)
   http.test.ts            full HTTP pipeline with fake Prisma and Redis
   health.int.test.ts      real Neon test branch, runs only with TEST_DATABASE_URL
+  network-fixture.ts      in memory docs/19 network with the NetworkRepository contract (no database needed)
+  network.test.ts         network and search endpoints over HTTP with the fixture
+  network.int.test.ts     the real search SQL on a seeded Neon test branch
 ```
 
 ## Adding a feature module
@@ -113,6 +120,8 @@ Rate limits fail open when Redis is down (a cache outage never blocks traffic). 
 - `test/setup-env.ts` runs first and loads `testEnv()`. `TEST_DATABASE_URL` and `TEST_REDIS_URL`, when set, replace the fake database and Redis URLs.
 - HTTP tests: build the module with `Test.createTestingModule({ imports: [AppModule] })`, override `PrismaService` and `RedisService` with small fakes when the test is not about them, call `configureHttpApp(app)`, then `supertest`.
 - Integration tests that need real services use `describe.skipIf(!process.env.TEST_DATABASE_URL)`.
+- Services that read a lot of data put the queries in a `<area>.repository.ts` class. HTTP tests then override the repository with an in memory fake (`test/network-fixture.ts`), and a `.int.test.ts` covers the real SQL.
+- Raw SQL: Prisma maps camelCase fields to quoted camelCase columns (`t."scheduledDepartureAt"`), tables use the `@@map` names. Compare `serviceDate` with `CAST(${date} AS date)` and read timestamps as `EXTRACT(EPOCH FROM ...)`, so no time zone guessing happens in the driver.
 
 ## Errors and logs
 

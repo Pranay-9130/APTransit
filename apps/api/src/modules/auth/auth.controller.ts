@@ -36,6 +36,11 @@ function getRefreshTokenFromReq(req: Request): string | undefined {
   return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 }
 
+const REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** D-016: marker with no secret so the web proxy (path /) can tell a session exists. apt_rt is scoped to /api/v1/auth. */
+export const SESSION_MARKER_COOKIE = "apt_session";
+
 // docs/06: httpOnly, Secure, SameSite=Lax, path /api/v1/auth, 30 days. Only local development
 // over plain http drops Secure (Safari refuses Secure cookies on http://localhost).
 function setRefreshTokenCookie(res: Response, token: string, secure: boolean) {
@@ -44,7 +49,14 @@ function setRefreshTokenCookie(res: Response, token: string, secure: boolean) {
     secure,
     sameSite: "lax",
     path: "/api/v1/auth",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    maxAge: REFRESH_MAX_AGE_MS,
+  });
+  res.cookie(SESSION_MARKER_COOKIE, "1", {
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
+    path: "/",
+    maxAge: REFRESH_MAX_AGE_MS,
   });
 }
 
@@ -54,6 +66,12 @@ function clearRefreshTokenCookie(res: Response, secure: boolean) {
     secure,
     sameSite: "lax",
     path: "/api/v1/auth",
+  });
+  res.clearCookie(SESSION_MARKER_COOKIE, {
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
+    path: "/",
   });
 }
 
@@ -112,6 +130,8 @@ export class AuthController {
   ): Promise<AuthRefreshResponse> {
     const rawToken = getRefreshTokenFromReq(req);
     if (!rawToken) {
+      // A marker without a refresh token is stale, drop it so the web guard stops trusting it.
+      clearRefreshTokenCookie(res, this.secureCookie);
       throw new AppError("UNAUTHENTICATED", "No refresh token provided");
     }
 

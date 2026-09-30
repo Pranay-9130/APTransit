@@ -440,6 +440,26 @@ describe("Auth endpoints and lifecycle", () => {
     expect(res.status).toBe(401);
     const cookie = (res.headers["set-cookie"] as unknown as string[])[0]!;
     expect(cookie).toMatch(/^apt_rt=;/);
+    const marker = (res.headers["set-cookie"] as unknown as string[]).find((c) => c.startsWith("apt_session="));
+    expect(marker).toMatch(/^apt_session=;.*Path=\//);
+  });
+
+  it("login sets the apt_session marker for the web guard (D-016)", async () => {
+    const target = "marker@aptransit.test";
+    const res = await verify(target, await requestCode(target));
+    const marker = (res.headers["set-cookie"] as unknown as string[]).find((c) => c.startsWith("apt_session="))!;
+    expect(marker).toMatch(/^apt_session=1;/);
+    expect(marker).toContain("Path=/;");
+    expect(marker).toContain("HttpOnly");
+    expect(marker).toContain("SameSite=Lax");
+    expect(marker).toMatch(/Max-Age=2592000/);
+  });
+
+  it("refresh without a refresh cookie clears a stale marker", async () => {
+    const res = await request(app.getHttpServer()).post("/api/v1/auth/refresh").set("Cookie", "apt_session=1");
+    expect(res.status).toBe(401);
+    const cookies = res.headers["set-cookie"] as unknown as string[];
+    expect(cookies.some((c) => /^apt_session=;/.test(c))).toBe(true);
   });
 
   it("a soft deleted user cannot refresh", async () => {

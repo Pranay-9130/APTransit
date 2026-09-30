@@ -24,8 +24,11 @@ The contract between web and API: zod schemas, enums, error codes, the status ma
 | `src/status.ts` | `StatusTone`, `DisplayStatus`, `STATUS_MAP` (tone, lucide icon, i18n key), `deriveTripDisplayStatus()`, `busDisplayStatus()`, `TICKET_STATUS_MAP`, `ColourOfDay`, `colourOfDay(date)` (IST weekday) |
 | `src/money.ts` | `Paise` schema, `isPaise`, `rupeesToPaise`, `paiseToRupees`, `roundToRupee` |
 | `src/schemas/health.ts` | `HealthDto`, `ProbeState` |
+| `src/fare.ts` | `calculateFare({ distanceKm, rule, isFreeTravel })` (per km with a minimum, nearest rupee, plus reservation fee), `refundQuote(...)` (docs/07 section 6 tiers, operator cancel, free tickets), `DEFAULT_REFUND_TIERS`, `FareRuleInput`, `RefundTier`. The only place fares are computed |
+| `src/schemas/search.ts` | `PublicId`, `ServiceDateString` (real YYYY-MM-DD), `LocalTimeString` (HH:mm), `SearchTripsQuery`, `TripSummaryDto`, `SearchTripsResponse` |
+| `src/schemas/network.ts` | `PlacesSearchQuery`, `PlaceDto`, `DistrictDto`, `BusStandDto`, `BusStandRouteDto`, `RouteDto` (ordered `stops`), `TimetableQuery`, `TimetableDto`, and array `...Response` schemas for the web client |
 
-Planned next (see the day prompts): `codes.ts`, `polyline.ts`, `time.ts`, `permissions.ts` (Day 2), `schemas/auth.ts` and `messages/` (Day 3), `fare.ts` and network schemas (Day 4), `format.ts` (Day 5), `qr.ts` (Day 7).
+Planned next (see the day prompts): `codes.ts`, `polyline.ts`, `time.ts`, `permissions.ts` (Day 2), `schemas/auth.ts` and `messages/` (Day 3), `format.ts` (Day 5), `qr.ts` (Day 7).
 
 ## Adding a schema
 
