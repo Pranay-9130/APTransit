@@ -16,7 +16,7 @@ Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this w
 - Verified the real SQL on a local PGlite database (migrate deploy, seed twice, `seed.test`, `health.int.test`, `network.int.test` all green; search p95 under 250 ms).
 
 **Merged PRs**
-- none yet: `b/network-search` is committed locally, not pushed.
+- `b/network-search`: fast forwarded into `main` on 2026-09-30 (no PR, at the owner's request).
 
 **Carry over**
 - Run `network.int.test.ts` on the Neon test branch once `TEST_DATABASE_URL` exists.
@@ -42,7 +42,7 @@ Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this w
 - Checked in the browser against the real API on local PGlite: 360, 768, 1280 px, English and Telugu, keyboard only home and calendar, wrong code, paste, reload keeps the session (one refresh call), citizen gets 403 on /ops, manager gets in, logout clears the marker.
 
 **Merged PRs**
-- none yet: `a/home-login` is committed locally on top of `b/network-search`, not pushed.
+- `a/home-login`: fast forwarded into `main` on 2026-09-30 (no PR, at the owner's request).
 
 **Carry over**
 - Scope switcher in ops and gov needs depot and district names (MeDto has only ids).

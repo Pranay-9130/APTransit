@@ -20,9 +20,9 @@ Read order for a new session:
 
 | Branch | Contains | Status |
 | --- | --- | --- |
-| `main` | Day 1 to Day 3 plus the Day 3 review fixes | Baseline |
-| `b/network-search` | Day 4 Dev B: fare.ts, network and search APIs, D-016 marker cookie, seed aligned with docs/19 | Committed locally, not pushed. Merge first |
-| `a/home-login` | Day 4 Dev A, branched from `b/network-search`: API client, session, proxy guard, home, login, account, OtpInput, DatePicker | Committed locally, not pushed. Merge second |
+| `main` | Day 1 to Day 4 (Day 4 fast forwarded from `b/network-search` then `a/home-login`, no PR, at the owner's request) | Baseline |
+
+**Day 5 starts from `main`.**
 
 ### Works today (verified 2026-09-30)
 
