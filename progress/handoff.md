@@ -41,7 +41,6 @@ Read order for a new session:
 | `/search` results page (home already links to it) | Scheduled | Day 5 (Dev A) |
 | Ops and gov scope switcher with names | MeDto has only depot and district ids | Needs a small `/me` or scope endpoint, decide at sync |
 | Short Telugu label for "Track bus" | D-015, needs a native speaker | Open |
-| 403 state has no `h1` (EmptyState renders `h3`) | S3 polish | When EmptyState gets a heading level prop |
 | Worker queues, seat holds | Scheduled | Day 5 (Dev B) |
 
 ### Decisions

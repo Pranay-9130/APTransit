@@ -53,7 +53,7 @@ Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this w
 
 **Bugs found**
 - Fixed today: calendar overflowed at 360 px and opened on the month arrow; dialog close button was 28 px (now 44); focus lost after a wrong OTP; logout on a guarded page went to /login instead of /; locale from the account did not reach the root layout after login (now a full load).
-- Known (S3): the 403 state has no `h1` (EmptyState renders an `h3`).
+- Fixed: EmptyState and ErrorState now support headingLevel ("h1", "h2", "h3"); 403, not-found, and error states now render h1.
 
 **Decisions needed**
 - D-017.
