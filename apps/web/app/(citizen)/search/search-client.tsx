@@ -86,7 +86,10 @@ export function SearchClient({
   const date = searchParams.get("date") ?? initialDate ?? today;
   const after = searchParams.get("after") ?? initialAfter ?? undefined;
 
-  const [timeBand, setTimeBand] = useState<TimeBand>("all");
+  const timeBandParam = searchParams.get("timeBand") as TimeBand | null;
+  const timeBand: TimeBand = timeBandParam && ["all", "morning", "afternoon", "evening", "night"].includes(timeBandParam)
+    ? timeBandParam
+    : "all";
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   // Edit form state
@@ -188,18 +191,31 @@ export function SearchClient({
     setEditErrors(errors);
     if (errors.from || errors.to || !editFrom || !editTo) return;
 
-    const params = new URLSearchParams({
-      from: editFrom.id,
-      to: editTo.id,
-      date: editDate,
-    });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("from", editFrom.id);
+    params.set("to", editTo.id);
+    params.set("date", editDate);
+    if (timeBand !== "all") params.set("timeBand", timeBand);
+    else params.delete("timeBand");
     setIsEditOpen(false);
     router.push(`/search?${params.toString()}`);
   };
 
   const handleNextDay = () => {
     const nextDate = addDays(date, 1);
-    const params = new URLSearchParams({ from: fromId, to: toId, date: nextDate });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("from", fromId);
+    params.set("to", toId);
+    params.set("date", nextDate);
+    if (timeBand !== "all") params.set("timeBand", timeBand);
+    else params.delete("timeBand");
+    router.push(`/search?${params.toString()}`);
+  };
+
+  const updateTimeBand = (nextBand: TimeBand) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextBand === "all") params.delete("timeBand");
+    else params.set("timeBand", nextBand);
     router.push(`/search?${params.toString()}`);
   };
 
@@ -343,7 +359,7 @@ export function SearchClient({
                   <button
                     key={band.id}
                     type="button"
-                    onClick={() => setTimeBand(band.id)}
+                    onClick={() => updateTimeBand(band.id)}
                     className={`flex items-center justify-between rounded-md px-3 py-2 text-left text-small transition-colors ${
                       active
                         ? "bg-primary text-primary-fg font-medium"
@@ -368,7 +384,7 @@ export function SearchClient({
                 <button
                   key={band.id}
                   type="button"
-                  onClick={() => setTimeBand(band.id)}
+                  onClick={() => updateTimeBand(band.id)}
                   className={`shrink-0 rounded-full px-3.5 py-1.5 text-small font-medium transition-colors ${
                     active
                       ? "bg-primary text-primary-fg"

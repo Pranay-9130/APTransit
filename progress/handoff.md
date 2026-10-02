@@ -14,19 +14,22 @@ Read order for a new session:
 
 ---
 
-## Current state (Day 4 built, 2026-09-30)
+## Current state (Day 5 code complete, awaiting cloud credentials, 2026-10-02)
 
 ### Git
 
 | Branch | Contains | Status |
 | --- | --- | --- |
-| `main` | Day 1 to Day 4 (Day 4 fast forwarded from `b/network-search` then `a/home-login`, no PR, at the owner's request) | Baseline |
+| `main` | Day 1 to Day 5 (Day 5 code merged locally) | Baseline |
 
-**Day 5 starts from `main`.**
+**Day 6 starts from `main`.**
 
-### Works today (verified 2026-09-30)
+### Works today (verified 2026-10-02)
 
 - `pnpm lint`, `pnpm i18n:check`, `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm check:dashes` pass on Windows (Node 22.20, pnpm 11.10).
+- All Day 5 features implemented: format.ts, TripCard, /search, /bus/[tripId], /timetable, trip/booking schemas, trips and bookings APIs, Redis seat holds, BullMQ queues, worker, E2E-1 test.
+- Worker drainDelay=60 configured (reads BULLMQ_DRAIN_DELAY_SEC, default 60, logs on startup).
+- Playwright installed and Chromium downloaded for E2E tests.
 - Tests: shared 91, api 108 (+6 database tests skipped without `TEST_DATABASE_URL`), ui 21, web 33, scripts 6.
 - The 6 database tests (seed twice, health, real search SQL with p95 under 250 ms) passed against a local PGlite database, not Neon yet.
 - Public network API: places search (English and Telugu, bus stands first), districts, bus stands, routes, timetable, trip search with fares from `fare.ts` and seats left. Kurnool to Vijayawada tomorrow gives the 6 docs/19 trips, Express Rs 541.

@@ -3,10 +3,9 @@ import { Logger } from "@nestjs/common";
 import type { Job } from "bullmq";
 import { TripGeneratorService } from "../../trips/trip-generator.service";
 import { QUEUES } from "../queue.constants";
+import { bullmqProcessorOptions } from "../worker-options";
 
-@Processor(QUEUES.MAINTENANCE, {
-  drainDelay: 60,
-})
+@Processor(QUEUES.MAINTENANCE, bullmqProcessorOptions())
 export class MaintenanceProcessor extends WorkerHost {
   private readonly logger = new Logger(MaintenanceProcessor.name);
 

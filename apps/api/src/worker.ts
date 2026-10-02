@@ -4,6 +4,7 @@ import { NestFactory } from "@nestjs/core";
 import type { Queue } from "bullmq";
 import { Logger } from "nestjs-pino";
 import { QUEUES } from "./modules/queue/queue.constants";
+import { bullmqDrainDelaySec } from "./modules/queue/worker-options";
 import { WorkerModule } from "./worker.module";
 
 // Background worker entry (docs/03): WorkerModule, no HTTP server.
@@ -18,7 +19,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule, { bufferLogs: true });
   const logger = app.get(Logger);
   app.useLogger(logger);
-  logger.log("Worker started. BullMQ queues registered with drainDelay.", "Worker");
+  logger.log(
+    `Worker started. BullMQ expiry and maintenance workers use drainDelay=${bullmqDrainDelaySec()}s from BULLMQ_DRAIN_DELAY_SEC.`,
+    "Worker",
+  );
 
   // Register repeatable maintenance job: daily at 00:30 IST
   try {

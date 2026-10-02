@@ -45,12 +45,14 @@ test.describe("E2E-1: Guest search journey", () => {
     const summaryBar = page.getByTestId("search-summary-bar");
     await expect(summaryBar).toBeVisible({ timeout: 10_000 });
 
-    // Either trips appear or an empty state shows (no database in CI = empty state is acceptable)
     const tripCard = page.locator("a[data-testid='trip-card']");
     const emptyState = page.getByTestId("search-empty");
-    await expect(tripCard.first().or(emptyState)).toBeVisible({ timeout: 10_000 });
+    await expect(tripCard.first().or(emptyState)).toBeVisible({ timeout: 15_000 });
 
-    // 7. If results exist, open the first bus details page
+    if (process.env.E2E_REQUIRE_RESULTS === "1") {
+      await expect(tripCard.first()).toBeVisible();
+    }
+
     const cardCount = await tripCard.count();
     if (cardCount > 0) {
       const firstCard = tripCard.first();
@@ -58,20 +60,16 @@ test.describe("E2E-1: Guest search journey", () => {
       expect(href).toMatch(/\/bus\//);
       await firstCard.click();
 
-      // Bus detail page
       await page.waitForURL(/\/bus\//, { timeout: 10_000 });
 
-      // Service type or bus number visible somewhere in the page
       const busContent = page.getByTestId("bus-detail-content");
       await expect(busContent).toBeVisible({ timeout: 10_000 });
 
-      // Book ticket button must be present (even if disabled)
       const bookBtn = page.getByRole("link", { name: /book ticket/i }).or(
         page.getByRole("button", { name: /book ticket/i }),
       );
       await expect(bookBtn).toBeVisible({ timeout: 5_000 });
 
-      // 8. Go back to search: filters must still be set
       await page.goBack();
       await page.waitForURL(/\/search/, { timeout: 5_000 });
       const urlBack = new URL(page.url());

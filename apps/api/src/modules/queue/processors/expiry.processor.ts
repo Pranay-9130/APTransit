@@ -3,10 +3,9 @@ import { Logger } from "@nestjs/common";
 import type { Job } from "bullmq";
 import { BookingsService } from "../../bookings/bookings.service";
 import { QUEUES } from "../queue.constants";
+import { bullmqProcessorOptions } from "../worker-options";
 
-@Processor(QUEUES.EXPIRY, {
-  drainDelay: 60,
-})
+@Processor(QUEUES.EXPIRY, bullmqProcessorOptions())
 export class ExpiryProcessor extends WorkerHost {
   private readonly logger = new Logger(ExpiryProcessor.name);
 
