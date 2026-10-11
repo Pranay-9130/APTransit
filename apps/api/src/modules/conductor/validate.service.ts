@@ -34,6 +34,9 @@ export interface ValidatorContext {
   busId: string;
   tripId: string;
   routeNameEn: string;
+  /** D-042: Telugu route name and district, for child card messages and zone passes. */
+  routeNameTe?: string;
+  districtId?: string;
   serviceType: ServiceType;
   /** The trip record's last reached stop: bounds the boarding stop when the bus GPS is stale. */
   lastStopSeq: number | null;
@@ -72,6 +75,8 @@ export class ValidateService {
         busId: a.busId,
         tripId: a.tripId,
         routeNameEn: a.trip.route.nameEn,
+        routeNameTe: a.trip.route.nameTe,
+        districtId: a.trip.route.depot.districtId,
         serviceType: a.bus.busType.serviceType,
         lastStopSeq: a.trip.lastStopSeq,
         stops: a.trip.route.routeStops.map((rs) => ({
@@ -138,6 +143,7 @@ export class ValidateService {
     let reason: ScanReason = typeof content === "string" ? content : "NOT_FOUND";
     let ticketId: string | null = null;
     let passId: string | null = null;
+    let childBoarded: { userId: string; passId: string; child: string } | null = null;
     let holderUserId: string | null = null;
     let earlierScanAt: string | undefined;
     let detail: ValidateTicketResult["ticket"];
@@ -196,6 +202,10 @@ export class ValidateService {
                   homeStopId: true,
                   destStopId: true,
                   user: { select: { name: true } },
+                  userId: true,
+                  zoneDistrictId: true,
+                  holderName: true,
+                  holderAge: true,
                   // Every VALID scan on this trip: a group pass may board groupSize people
                   scans: {
                     where: { tripId: ctx.tripId, result: "VALID" },
@@ -247,7 +257,11 @@ export class ValidateService {
                   (payload.d !== formatIstDate(now) ||
                     formatIstDate(ticket.trip.serviceDate) !== formatIstDate(now)),
                 ),
-                serviceEligible: !pass || pass.eligibleServiceTypes.includes(ctx.serviceType),
+                // D-042: a zone pass is valid only on routes of its district
+                serviceEligible:
+                  !pass ||
+                  (pass.eligibleServiceTypes.includes(ctx.serviceType) &&
+                    (!pass.zoneDistrictId || pass.zoneDistrictId === ctx.districtId)),
                 // D-035 segment checks; a null stopSeq (source NONE) skips them
                 stopSeq: boarding.seq,
                 boardingSeq: ticket ? (seqOf.get(ticket.boardingStopId) ?? null) : null,
@@ -307,6 +321,8 @@ export class ValidateService {
               )?.scannedAt;
             if (scanned) earlierScanAt = scanned.toISOString();
           }
+          if (reason === "OK" && pass?.holderName && pass.holderAge !== null)
+            childBoarded = { userId: pass.userId, passId: pass.id, child: pass.holderName };
           if (reason === "OK")
             detail = ticket
               ? {
@@ -318,7 +334,7 @@ export class ValidateService {
                   type: ticket.type,
                 }
               : {
-                  passengerName: pass!.user.name ?? "",
+                  passengerName: pass!.holderName ?? pass!.user.name ?? "",
                   seatNo: null,
                   routeName: ctx.routeNameEn,
                   boarding: "",
@@ -357,6 +373,15 @@ export class ValidateService {
       ...actor,
     });
     this.events.publish("conductor.scan", { tripId: ctx.tripId });
+    // Set inside the transaction callback, so TypeScript cannot see it change here.
+    const boarded = childBoarded as { userId: string; passId: string; child: string } | null;
+    if (boarded)
+      this.events.publish("pass.child_boarded", {
+        ...boarded,
+        routeEn: ctx.routeNameEn,
+        routeTe: ctx.routeNameTe ?? ctx.routeNameEn,
+        at: now.toISOString(),
+      });
     if (holderUserId && ticketId)
       this.events.publish("ticket.status", {
         ticketId,

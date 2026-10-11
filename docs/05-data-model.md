@@ -38,7 +38,7 @@
 | Severity | LOW, MEDIUM, HIGH, CRITICAL |
 | FeedbackCategory | DELAY, CLEANLINESS, STAFF, TICKET, SAFETY, OVERCROWDING, OTHER |
 | ComplaintStatus | RECEIVED, IN_REVIEW, RESOLVED, CLOSED |
-| NotificationType | BOOKING_CONFIRMED, TICKET_ACTIVATED, TICKET_RECEIVED, TRIP_DEPARTED, TRIP_DELAYED, BUS_NEAR_STOP, TRIP_CANCELLED, REPLACEMENT_BUS, ROUTE_UPDATE, PASS_EXPIRING, COMPLAINT_UPDATE |
+| NotificationType | BOOKING_CONFIRMED, TICKET_ACTIVATED, TICKET_RECEIVED, TRIP_DEPARTED, TRIP_DELAYED, BUS_NEAR_STOP, TRIP_CANCELLED, REPLACEMENT_BUS, ROUTE_UPDATE, PASS_EXPIRING, COMPLAINT_UPDATE, CHILD_BOARDED (D-042) |
 | EligibilityScheme | STREE_SHAKTI, STUDENT (D-036) |
 | EligibilityResult | ELIGIBLE, NOT_ELIGIBLE |
 | OtpChannel | EMAIL, PHONE |
@@ -104,8 +104,8 @@ The network is State > District > Depot > Route > Bus > Trip (D-034). A new stat
 
 | Table | Fields | Notes |
 | --- | --- | --- |
-| pass_types | id, kind, nameEn, nameTe, durationDays, validityMode (default ROLLING_DAYS), pricePaise, eligibleServiceTypes (ServiceType[]), scheme?, groupSize (default 1), routeRestricted (default false), isDemo (default false), sortOrder, isActive, stateId? | FREE_TRAVEL has pricePaise 0 and scheme STREE_SHAKTI. SCHOOL has scheme STUDENT and routeRestricted. FAMILY has groupSize 4. isDemo marks a placeholder price (D-036). stateId null means sold in every state |
-| passes | id, code, userId, passTypeId, status, pricePaise, durationDays, validityMode, eligibleServiceTypes, groupSize, homeStopId?, destStopId?, activatedAt?, validFrom?, validUntil?, eligibilityCheckId?, paymentId?, qrSecret (encrypted), createdAt | Never giftable. Price, duration, mode, services and group size are copied from the type at purchase, so a later pass type edit never changes a sold pass (D-036). homeStopId and destStopId are set for route restricted passes (SCHOOL) |
+| pass_types | id, kind, nameEn, nameTe, durationDays, validityMode (default ROLLING_DAYS), pricePaise, eligibleServiceTypes (ServiceType[]), scheme?, groupSize (default 1), routeRestricted (default false), isDemo (default false), sortOrder, zoneScoped (D-042), isActive, stateId? | FREE_TRAVEL has pricePaise 0 and scheme STREE_SHAKTI. SCHOOL has scheme STUDENT and routeRestricted. FAMILY has groupSize 4. isDemo marks a placeholder price (D-036). stateId null means sold in every state |
+| passes | id, code, userId, passTypeId, status, pricePaise, durationDays, validityMode, eligibleServiceTypes, groupSize, homeStopId?, destStopId?, activatedAt?, validFrom?, validUntil?, eligibilityCheckId?, paymentId?, qrSecret (encrypted), zoneDistrictId?, holderName?, holderAge? (D-042, migration 20261011000000_v3_passes_children), createdAt | holderName and holderAge make a child card: the owner (parent) gets CHILD_BOARDED on each valid scan. zoneDistrictId limits a zoneScoped pass to one district. Never giftable. Price, duration, mode, services and group size are copied from the type at purchase, so a later pass type edit never changes a sold pass (D-036). homeStopId and destStopId are set for route restricted passes (SCHOOL) |
 | eligibility_checks | id, userId, scheme, provider, result, reasonCode?, providerRef, checkedAt, expiresAt | Stores the **result only**. No Aadhaar number, no document image (sec 51) |
 | payments | id, bookingId?, passId?, provider (`RAZORPAY`), providerOrderId (unique), providerPaymentId? (unique), amountPaise, status, capturedAt?, raw (JSON, redacted), createdAt | Exactly one of bookingId or passId |
 | refunds | id, paymentId, ticketId?, amountPaise, status, providerRefundId?, policyId, reason, createdAt, processedAt? | |

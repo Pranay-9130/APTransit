@@ -225,9 +225,76 @@ export class AuthService {
       throw new AppError("OTP_EXPIRED", "That code has expired. Send a new code.");
     }
 
+    return this.signIn(
+      input.channel === "EMAIL" ? { email: target } : { phone: target },
+      {
+        phone: input.channel === "PHONE" ? target : null,
+        email: input.channel === "EMAIL" ? target : null,
+      },
+      ip,
+      userAgent,
+      "otp",
+    );
+  }
+
+  /**
+   * D-043: Sign in with Google. The ID token is checked by Google (tokeninfo), then the audience,
+   * issuer and verified email are checked here. Finds the account by email or creates a citizen.
+   */
+  async googleSignIn(
+    credential: string,
+    ip: string,
+    userAgent?: string,
+  ): Promise<AuthVerifyResponse & { refreshToken: string }> {
+    const clientId = this.config.get("GOOGLE_CLIENT_ID", { infer: true });
+    if (!clientId) throw new AppError("FORBIDDEN", "Google sign in is not set up");
+    let claims: {
+      aud?: string;
+      iss?: string;
+      email?: string;
+      email_verified?: string | boolean;
+      name?: string;
+      exp?: string;
+    };
+    try {
+      const res = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`,
+        {
+          signal: AbortSignal.timeout(5_000),
+        },
+      );
+      if (!res.ok) throw new Error(`tokeninfo ${res.status}`);
+      claims = (await res.json()) as typeof claims;
+    } catch {
+      throw new AppError("UNAUTHENTICATED", "Google sign in failed. Try again.");
+    }
+    const verified = claims.email_verified === true || claims.email_verified === "true";
+    const issuerOk =
+      claims.iss === "accounts.google.com" || claims.iss === "https://accounts.google.com";
+    const notExpired = Number(claims.exp ?? 0) * 1000 > Date.now();
+    if (claims.aud !== clientId || !issuerOk || !verified || !notExpired || !claims.email) {
+      throw new AppError("UNAUTHENTICATED", "Google sign in failed. Try again.");
+    }
+    const email = claims.email.trim().toLowerCase();
+    return this.signIn(
+      { email },
+      { email, phone: null, name: claims.name?.slice(0, 100) ?? null },
+      ip,
+      userAgent,
+      "google",
+    );
+  }
+
+  private async signIn(
+    where: { email: string } | { phone: string },
+    create: { email: string | null; phone: string | null; name?: string | null },
+    ip: string,
+    userAgent: string | undefined,
+    method: "otp" | "google",
+  ): Promise<AuthVerifyResponse & { refreshToken: string }> {
     // Find or create user
     let user = await this.prisma.user.findFirst({
-      where: input.channel === "EMAIL" ? { email: target } : { phone: target },
+      where,
       include: {
         userRoles: true,
       },
@@ -240,8 +307,7 @@ export class AuthService {
     if (!user) {
       user = await this.prisma.user.create({
         data: {
-          phone: input.channel === "PHONE" ? target : null,
-          email: input.channel === "EMAIL" ? target : null,
+          ...create,
           preferredLocale: "en",
           userRoles: {
             create: [
@@ -288,6 +354,7 @@ export class AuthService {
       action: "auth.login",
       entityType: "user",
       entityId: user.id,
+      after: { method },
       actorUserId: user.id,
       actorRole: user.userRoles[0]?.role ?? "CITIZEN",
       ip,

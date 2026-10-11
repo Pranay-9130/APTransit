@@ -203,6 +203,7 @@ enum NotificationType {
   ROUTE_UPDATE
   PASS_EXPIRING
   COMPLAINT_UPDATE
+  CHILD_BOARDED
 }
 
 enum EligibilityScheme {
@@ -868,6 +869,8 @@ model PassType {
   /// Placeholder price pending client confirmation (D-036); the web shows a "Demo price" chip
   isDemo               Boolean           @default(false)
   sortOrder            Int               @default(0)
+  /// D-042: valid only inside one district (the zone the buyer picks)
+  zoneScoped           Boolean           @default(false)
   isActive             Boolean           @default(true)
   /// Null means sold in every state
   stateId              String?
@@ -902,6 +905,10 @@ model Pass {
   eligibilityCheckId String?
   paymentId          String?
   qrSecret           String
+  /// D-042: zone pass district, child card holder (the parent is userId and gets CHILD_BOARDED)
+  zoneDistrictId     String?
+  holderName         String?
+  holderAge          Int?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 

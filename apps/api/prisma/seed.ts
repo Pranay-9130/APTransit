@@ -121,7 +121,7 @@ export async function runSeed(): Promise<void> {
     "gift.cutoffMinutesBefore": 120,
     "gift.maxTransfers": 1,
     "pass.activateWithinDays": 30,
-    "qr.periodSec": 30,
+    "qr.periodSec": 3,
     "qr.windowSteps": 1,
   };
 
@@ -316,7 +316,10 @@ export async function runSeed(): Promise<void> {
   const standardServices: Array<
     "PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY" | "METRO_EXPRESS" | "EXPRESS"
   > = ["PALLEVELUGU", "ULTRA_PALLEVELUGU", "CITY_ORDINARY", "METRO_EXPRESS", "EXPRESS"];
-  const base = { eligibleServiceTypes: standardServices, scheme: null, validityMode: "ROLLING_DAYS" as const, groupSize: 1, routeRestricted: false, isDemo: true };
+  const base = { eligibleServiceTypes: standardServices, scheme: null, validityMode: "ROLLING_DAYS" as const, groupSize: 1, routeRestricted: false, isDemo: true, zoneScoped: false };
+  // D-042 zone passes: valid on village and city ordinary services inside one district the buyer picks
+  const villageServices: Array<"PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY"> = ["PALLEVELUGU", "ULTRA_PALLEVELUGU", "CITY_ORDINARY"];
+  const zone = { ...base, eligibleServiceTypes: villageServices, zoneScoped: true };
   const passTypes = [
     { ...base, kind: "DAY" as const, nameEn: "Day Pass", nameTe: "రోజు పాస్", durationDays: 1, validityMode: "UNTIL_DAY_END" as const, pricePaise: 12000, sortOrder: 1 },
     { ...base, kind: "WEEKLY" as const, nameEn: "Weekly Pass", nameTe: "వారపు పాస్", durationDays: 7, pricePaise: 45000, sortOrder: 2 },
@@ -325,11 +328,13 @@ export async function runSeed(): Promise<void> {
     { ...base, kind: "SCHOOL" as const, nameEn: "School Pass", nameTe: "విద్యార్థి పాస్", durationDays: 30, pricePaise: 60000, scheme: "STUDENT" as const, routeRestricted: true, sortOrder: 5 },
     { ...base, kind: "ANNUAL" as const, nameEn: "Annual Pass", nameTe: "వార్షిక పాస్", durationDays: 365, pricePaise: 1500000, sortOrder: 6 },
     { ...base, kind: "FREE_TRAVEL" as const, nameEn: "Free Travel Pass (Stree Shakti)", nameTe: "ఉచిత ప్రయాణ పాస్ (స్త్రీ శక్తి)", durationDays: 365, pricePaise: 0, scheme: "STREE_SHAKTI" as const, isDemo: false, sortOrder: 7 },
+    { ...zone, kind: "DAY" as const, nameEn: "Zone Day Pass", nameTe: "జోన్ రోజు పాస్", durationDays: 1, validityMode: "UNTIL_DAY_END" as const, pricePaise: 6000, sortOrder: 8 },
+    { ...zone, kind: "MONTHLY" as const, nameEn: "Zone Monthly Pass", nameTe: "జోన్ నెలవారీ పాస్", durationDays: 30, pricePaise: 90000, sortOrder: 9 },
   ];
 
   for (const pt of passTypes) {
     const existing = await prisma.passType.findFirst({
-      where: { kind: pt.kind },
+      where: { kind: pt.kind, zoneScoped: pt.zoneScoped },
     });
     const data = { ...pt, stateId: apStateId };
     if (existing) {
@@ -596,7 +601,12 @@ export async function runSeed(): Promise<void> {
   const cityOrdinaryTypeId = busTypeMap.get("CITY_ORDINARY")!;
 
   let busNumberIndex = 101;
-  const buses: { id: string; depotId: string; busTypeId: string; status: "IDLE" | "RUNNING" | "MAINTENANCE" | "BREAKDOWN" }[] = [];
+  const buses: {
+    id: string;
+    depotId: string;
+    busTypeId: string;
+    status: "IDLE" | "RUNNING" | "MAINTENANCE" | "BREAKDOWN";
+  }[] = [];
 
   for (const dep of DEPOTS) {
     const dId = depotMap.get(dep.code)!;
@@ -702,7 +712,9 @@ export async function runSeed(): Promise<void> {
   console.log(`Generated ${tripRows.length} trips from ${todayIstStr} to ${plus7IstStr}.`);
 
   // Available buses at Kurnool for initial assignment
-  const availableBuses = buses.filter((b) => b.depotId === knlDepotId && b.status !== "BREAKDOWN" && b.status !== "MAINTENANCE");
+  const availableBuses = buses.filter(
+    (b) => b.depotId === knlDepotId && b.status !== "BREAKDOWN" && b.status !== "MAINTENANCE",
+  );
 
   // docs/19 has about 450 trips a day, so insert in batches (one row at a time takes minutes on Neon).
   const BATCH = 500;
@@ -730,7 +742,10 @@ export async function runSeed(): Promise<void> {
     let busAssignIndex = 0;
     for (let i = 0; i < tripRows.length; i += BATCH) {
       const unassigned = await prisma.trip.findMany({
-        where: { code: { in: tripRows.slice(i, i + BATCH).map((t) => t.code) }, assignments: { none: {} } },
+        where: {
+          code: { in: tripRows.slice(i, i + BATCH).map((t) => t.code) },
+          assignments: { none: {} },
+        },
         select: { id: true, scheduledDepartureAt: true },
         orderBy: { scheduledDepartureAt: "asc" },
       });

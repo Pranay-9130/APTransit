@@ -3,7 +3,9 @@ import {
   type BusStandRouteDto,
   type DistrictDto,
   type PlaceDto,
+  PlacesNearbyQuery,
   PlacesSearchQuery,
+  type NearbyPlaceDto,
   PublicId,
   type RouteDto,
   SearchTripsQuery,
@@ -29,8 +31,18 @@ export class NetworkController {
 
   @Throttle(SEARCH_LIMIT)
   @Get("places/search")
-  searchPlaces(@Query(new ZodValidationPipe(PlacesSearchQuery)) query: PlacesSearchQuery): Promise<PlaceDto[]> {
+  searchPlaces(
+    @Query(new ZodValidationPipe(PlacesSearchQuery)) query: PlacesSearchQuery,
+  ): Promise<PlaceDto[]> {
     return this.network.searchPlaces(query);
+  }
+
+  @Throttle(SEARCH_LIMIT)
+  @Get("places/nearby")
+  nearbyPlaces(
+    @Query(new ZodValidationPipe(PlacesNearbyQuery)) query: PlacesNearbyQuery,
+  ): Promise<NearbyPlaceDto[]> {
+    return this.network.nearbyPlaces(query);
   }
 
   /** D-034: active states with their map view, for the gov state picker and maps. */
@@ -50,7 +62,9 @@ export class NetworkController {
   }
 
   @Get("bus-stands/:id/routes")
-  busStandRoutes(@Param("id", new ZodValidationPipe(PublicId)) id: string): Promise<BusStandRouteDto[]> {
+  busStandRoutes(
+    @Param("id", new ZodValidationPipe(PublicId)) id: string,
+  ): Promise<BusStandRouteDto[]> {
     return this.network.routesOfBusStand(id);
   }
 
@@ -69,7 +83,9 @@ export class NetworkController {
 
   @Throttle(SEARCH_LIMIT)
   @Get("search/trips")
-  searchTrips(@Query(new ZodValidationPipe(SearchTripsQuery)) query: SearchTripsQuery): Promise<TripSummaryDto[]> {
+  searchTrips(
+    @Query(new ZodValidationPipe(SearchTripsQuery)) query: SearchTripsQuery,
+  ): Promise<TripSummaryDto[]> {
     return this.network.searchTrips(query);
   }
 }

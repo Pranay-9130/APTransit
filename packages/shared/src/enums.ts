@@ -29,6 +29,14 @@ export const ServiceType = z.enum([
 ]);
 export type ServiceType = z.infer<typeof ServiceType>;
 
+/** D-042: services that stop in villages. A journey to or from a village stop lists only these. */
+export const VILLAGE_SERVICE_TYPES = [
+  "PALLEVELUGU",
+  "ULTRA_PALLEVELUGU",
+  "CITY_ORDINARY",
+  "METRO_EXPRESS",
+] as const satisfies readonly ServiceType[];
+
 export const BusStatus = z.enum(["IDLE", "RUNNING", "DELAYED", "BREAKDOWN", "MAINTENANCE"]);
 export type BusStatus = z.infer<typeof BusStatus>;
 
@@ -149,6 +157,7 @@ export const NotificationType = z.enum([
   "ROUTE_UPDATE",
   "PASS_EXPIRING",
   "COMPLAINT_UPDATE",
+  "CHILD_BOARDED",
 ]);
 export type NotificationType = z.infer<typeof NotificationType>;
 

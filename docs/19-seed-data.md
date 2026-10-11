@@ -78,6 +78,13 @@ One `states` row: Andhra Pradesh, code `AP`, fixed id `stateap000000000000000000
 
 Every route also has its reverse (`...-02`) with mirrored stops. Polylines: straight segments between stops are fine for the MVP (encode with the Google polyline algorithm). Nicer road geometry is a Phase 2 task.
 
+### v3 additions (D-042)
+
+- Districts ELR (Eluru) and EGD (East Godavari). Stops ELR (Eluru Bus Stand), RJY (Rajamahendravaram Bus Stand), ANK (Anakapalli, village stop, VSP district).
+- Long journey route VJA-VSP-01 Vijayawada to Visakhapatnam (D-VJA): VJA 0 / 0, ELR 60 / 75, RJY 150 / 190, ANK 315 / 390, DWK 350 / 435. Reverse VSP-VJA-02. Departures 07:00 Ultra Deluxe, 21:00 Garuda AC, 22:30 Super Luxury (overnight, arrives next day).
+- Pass types: Day Pass 150 rupees, Zone Day Pass 60 rupees (zone), Zone Monthly Pass 900 rupees (zone), plus Weekly, Monthly and Free travel. Zone passes are valid on Pallevelugu, Ultra Pallevelugu and City Ordinary.
+- `qr.periodSec` setting is 3.
+
 ## Bus types and demo fares
 
 | Service type | Layout | Seats | AC | Free travel | Per km (paise) | Min fare | Reservation fee |

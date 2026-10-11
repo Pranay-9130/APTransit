@@ -21,6 +21,7 @@ export const PassTypeDto = z.object({
   routeRestricted: z.boolean(),
   /** Placeholder price pending client confirmation (D-036): show a "Demo price" chip. */
   isDemo: z.boolean(),
+  zoneScoped: z.boolean().optional(),
 });
 export type PassTypeDto = z.infer<typeof PassTypeDto>;
 
@@ -43,6 +44,11 @@ export const PassDto = z.object({
   /** Route restricted passes only. */
   homeStop: PassStop.nullable(),
   destStop: PassStop.nullable(),
+  /** D-042 zone pass: the one district it is valid in. */
+  zoneDistrictId: z.string().nullable().optional(),
+  /** D-042 child card: the child who travels; the account holder (parent) is told on each boarding. */
+  holderName: z.string().nullable().optional(),
+  holderAge: z.number().int().nullable().optional(),
   createdAt: z.string().datetime(),
   /** A READY pass must be activated before this moment (pass.activateWithinDays). */
   activateBy: z.string().datetime(),
@@ -55,12 +61,29 @@ export const PassDto = z.object({
 });
 export type PassDto = z.infer<typeof PassDto>;
 
+/** D-042: a child card is a pass for a child under CHILD_CARD_MAX_AGE, bought by the parent. */
+export const CHILD_CARD_MAX_AGE = 18;
+
 export const CreatePassInput = z
   .object({
     passTypeId: PublicId,
     /** Route restricted passes (SCHOOL): where the student lives and the institution's stop. */
     homeStopId: PublicId.optional(),
     destStopId: PublicId.optional(),
+    /** D-042: required when the pass type is zone scoped. */
+    zoneDistrictId: PublicId.optional(),
+    /** D-042: child card holder. */
+    child: z
+      .object({
+        name: z.string().trim().min(1).max(100),
+        age: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(CHILD_CARD_MAX_AGE - 1),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .refine((x) => Boolean(x.homeStopId) === Boolean(x.destStopId), { message: "Give both stops or neither" })

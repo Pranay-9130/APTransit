@@ -173,3 +173,11 @@ Day 14 adds the guarded admin module for stops, routes, timetables, date-range t
 - Load tests (repo root): `pnpm load:pool` (load conductors on running trips, never production), `pnpm load:validate`, `pnpm load:search`; results in `.local/load`.
 - Contract check (repo root): `pnpm check:endpoints` compares controllers with docs/06.
 - Bulk inserts in the history seed use `INSERT ... SELECT FROM unnest` (`bulkInsert` in `prisma/seed-history.ts`): createMany manages about 1,000 rows a second.
+
+## v3 (D-042, D-043)
+
+- `POST /auth/google` (`AuthService.googleSignIn`): verifies the Google ID token with tokeninfo, then shares `signIn()` with OTP verify. Needs `GOOGLE_CLIENT_ID`, else 403.
+- `GET /places/nearby` uses a cached `allStops()` and `haversineKm`.
+- Search runs `villageFit` on the rows (`villageEnd` comes from the trip query).
+- Passes: zone (`zoneDistrictId`) and child cards (`holderName`, `holderAge`). A valid child card scan publishes `pass.child_boarded`; the notifications subscriber sends `CHILD_BOARDED`.
+- `GET /ops/trips/:id` returns `stages` and `passBoardings`.

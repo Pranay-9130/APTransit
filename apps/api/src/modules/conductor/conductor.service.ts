@@ -53,6 +53,7 @@ export class ConductorService {
             route: {
               select: {
                 nameEn: true,
+                nameTe: true,
                 depot: { select: { districtId: true } },
                 // D-035: the stops of the route, for the boarding stop and the segment checks
                 routeStops: {

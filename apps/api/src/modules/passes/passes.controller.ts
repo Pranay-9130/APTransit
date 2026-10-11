@@ -1,4 +1,10 @@
-import { CreatePassInput, type PassDto, type PassQrDto, type PassTypeDto, PublicId } from "@aptransit/shared";
+import {
+  CreatePassInput,
+  type PassDto,
+  type PassQrDto,
+  type PassTypeDto,
+  PublicId,
+} from "@aptransit/shared";
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from "@nestjs/common";
 import type { Request } from "express";
 import type { AuthenticatedUser } from "../../common/auth/auth.types";
@@ -52,7 +58,10 @@ export class PassesController {
   }
 
   @Get(":id/qr")
-  qr(@CurrentUser() user: AuthenticatedUser, @Param("id", new ZodValidationPipe(PublicId)) id: string): Promise<PassQrDto> {
+  qr(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id", new ZodValidationPipe(PublicId)) id: string,
+  ): Promise<PassQrDto> {
     return this.passes.qrFor(user.id, id);
   }
 }

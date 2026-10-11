@@ -190,9 +190,18 @@ export class OpsService {
       busStatusCounts,
     });
   }
-  depots(user: AuthenticatedUser) { return this.prisma.depot.findMany({ where: this.scope(user), orderBy: { nameEn: "asc" } }); }
-  busTypes() { return this.prisma.busType.findMany({ orderBy: { nameEn: "asc" } }); }
-  routes(user: AuthenticatedUser, q: OpsQuery) { return this.prisma.route.findMany({ where: { depot: this.scope(user,"ops:read",q.depotId) }, orderBy: { nameEn: "asc" } }); }
+  depots(user: AuthenticatedUser) {
+    return this.prisma.depot.findMany({ where: this.scope(user), orderBy: { nameEn: "asc" } });
+  }
+  busTypes() {
+    return this.prisma.busType.findMany({ orderBy: { nameEn: "asc" } });
+  }
+  routes(user: AuthenticatedUser, q: OpsQuery) {
+    return this.prisma.route.findMany({
+      where: { depot: this.scope(user, "ops:read", q.depotId) },
+      orderBy: { nameEn: "asc" },
+    });
+  }
   async buses(user: AuthenticatedUser, q: OpsQuery) {
     const status = statusFilter(BusStatus, q.status);
     if (q.depotId) await this.depot(user, q.depotId);
@@ -203,10 +212,23 @@ export class OpsService {
           status,
           ...(q.q ? { regNo: { contains: q.q, mode: "insensitive" as const } } : {}),
         },
-        include: { busType: true, tripAssignments: { where: { endedAt: null, trip: { status: "RUNNING" } }, take: 1, orderBy: { startedAt: "desc" }, include: { trip: { include: { route: true } }, driver: { include: { user: true } } } } },
+        include: {
+          busType: true,
+          tripAssignments: {
+            where: { endedAt: null, trip: { status: "RUNNING" } },
+            take: 1,
+            orderBy: { startedAt: "desc" },
+            include: { trip: { include: { route: true } }, driver: { include: { user: true } } },
+          },
+        },
         orderBy: { regNo: "asc" },
       })
-    ).map(b => ({ ...busDto(b), currentRouteNameEn: b.tripAssignments?.[0]?.trip?.route?.nameEn ?? null, currentRouteNameTe: b.tripAssignments?.[0]?.trip?.route?.nameTe ?? null, driverName: b.tripAssignments?.[0]?.driver?.user?.name ?? null }));
+    ).map((b) => ({
+      ...busDto(b),
+      currentRouteNameEn: b.tripAssignments?.[0]?.trip?.route?.nameEn ?? null,
+      currentRouteNameTe: b.tripAssignments?.[0]?.trip?.route?.nameTe ?? null,
+      driverName: b.tripAssignments?.[0]?.driver?.user?.name ?? null,
+    }));
   }
   async busProfile(user: AuthenticatedUser, id: string) {
     const bus = await this.bus(user, id);
@@ -262,9 +284,16 @@ export class OpsService {
         include: { busType: true },
       });
     });
-    await this.log(actor, "fleet.update", "bus", id, { ...b, depotId: bus.depotId }, {
-      depotId: before.depotId,
-    });
+    await this.log(
+      actor,
+      "fleet.update",
+      "bus",
+      id,
+      { ...b, depotId: bus.depotId },
+      {
+        depotId: before.depotId,
+      },
+    );
     return this.busProfile(user, bus.id);
   }
   async maintenance(user: AuthenticatedUser, id: string, b: MaintenanceInput, actor: Actor) {
@@ -347,10 +376,35 @@ export class OpsService {
   }
   async tripProfile(user: AuthenticatedUser, id: string) {
     const t = await this.trip(user, id);
+    const [stops, tickets, scans] = await Promise.all([
+      this.prisma.routeStop.findMany({
+        where: { routeId: t.routeId },
+        orderBy: { seq: "asc" },
+        select: { stopId: true, seq: true, stop: { select: { nameEn: true, nameTe: true } } },
+      }),
+      this.prisma.ticket.findMany({
+        where: { tripId: id, status: { notIn: ["CANCELLED", "REFUNDED"] } },
+        select: { boardingStopId: true, droppingStopId: true, status: true },
+      }),
+      // D-035 boarding record: every VALID scan carries the stop it happened at, when known
+      this.prisma.ticketScan.groupBy({ by: ["stopId"], where: { tripId: id, result: "VALID" }, _count: { _all: true } }),
+    ]);
+    // D-042: how many people board and get off at each stage
+    const stages = stops.map((s) => ({
+      stopId: s.stopId,
+      seq: s.seq,
+      nameEn: s.stop.nameEn,
+      nameTe: s.stop.nameTe,
+      booked: tickets.filter((k) => k.boardingStopId === s.stopId).length,
+      boarded: scans.find((g) => g.stopId === s.stopId)?._count._all ?? 0,
+      alighting: tickets.filter((k) => k.droppingStopId === s.stopId).length,
+    }));
     return {
       ...tripDto(t),
       assignments: t.assignments.map(assignmentDto),
       incidents: t.incidents.map(incidentDto),
+      stages,
+      passBoardings: scans.find((g) => g.stopId === null)?._count._all ?? 0,
     };
   }
   async assign(
@@ -760,7 +814,7 @@ export class OpsService {
         include: { bus: { select: { regNo: true } }, trip: { select: { code: true } } },
         orderBy: { createdAt: "desc" },
       })
-    ).map(i => ({ ...incidentDto(i), busRegNo: i.bus?.regNo, tripCode: i.trip?.code }));
+    ).map((i) => ({ ...incidentDto(i), busRegNo: i.bus?.regNo, tripCode: i.trip?.code }));
   }
   async incident(user: AuthenticatedUser, id: string, actor: Actor, note?: string) {
     const row = await this.prisma.incident.findUnique({ where: { id } });

@@ -1,9 +1,9 @@
 "use client";
 
-import { formatMoney, PassDto, PassTypeDto } from "@aptransit/shared";
-import { Button, Card, EmptyState, ErrorState, Skeleton, ToneChip, toast } from "@aptransit/ui";
+import { CHILD_CARD_MAX_AGE, type CreatePassInput, DistrictsResponse, formatMoney, PassDto, PassTypeDto } from "@aptransit/shared";
+import { Button, Card, Checkbox, EmptyState, ErrorState, Field, Input, Skeleton, ToneChip, toast } from "@aptransit/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, FlaskConical, HeartHandshake, Ticket, Users } from "lucide-react";
+import { ArrowRight, Baby, FlaskConical, HeartHandshake, MapPinned, Ticket, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,11 +30,24 @@ export function BuyPassView() {
 
   const typesQuery = useQuery({
     queryKey: queryKeys.passTypes,
-    queryFn: ({ signal }) => api("/pass-types", { schema: PassTypes, signal, redirectOn401: false }),
+    queryFn: ({ signal }) =>
+      api("/pass-types", { schema: PassTypes, signal, redirectOn401: false }),
+  });
+
+  // D-042: zone passes name a district; a child card names the child (the parent gets a message on boarding)
+  const [zone, setZone] = useState("");
+  const [forChild, setForChild] = useState(false);
+  const [childName, setChildName] = useState("");
+  const [childAge, setChildAge] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const districts = useQuery({
+    queryKey: queryKeys.districts,
+    queryFn: ({ signal }) => api("/districts", { schema: DistrictsResponse, signal, redirectOn401: false }),
   });
 
   const create = useMutation({
-    mutationFn: (passTypeId: string) => api("/passes", { method: "POST", body: { passTypeId }, schema: PassDto }),
+    mutationFn: (body: CreatePassInput) =>
+      api("/passes", { method: "POST", body, schema: PassDto }),
   });
 
   const pick = (p: { nameEn: string; nameTe: string }) => (locale === "te" ? p.nameTe : p.nameEn);
@@ -71,10 +84,19 @@ export function BuyPassView() {
   const failure = create.error ? t(errorKey(create.error, (k) => t.has(k))) : payment.state.errorKey ? t(payment.state.errorKey) : null;
 
   const buy = async (type: PassTypeDto) => {
+    setFormError(null);
+    if (type.zoneScoped && !zone) return setFormError(t("passBuy.zoneRequired"));
+    const age = Number(childAge);
+    if (forChild && (!childName.trim() || !Number.isInteger(age) || age < 1 || age >= CHILD_CARD_MAX_AGE))
+      return setFormError(t("passBuy.childInvalid", { max: CHILD_CARD_MAX_AGE - 1 }));
     setBuying(type.id);
     let pass: PassDto;
     try {
-      pass = await create.mutateAsync(type.id);
+      pass = await create.mutateAsync({
+        passTypeId: type.id,
+        ...(type.zoneScoped ? { zoneDistrictId: zone } : {}),
+        ...(forChild ? { child: { name: childName.trim(), age } } : {}),
+      });
     } catch {
       return;
     }
@@ -95,6 +117,56 @@ export function BuyPassView() {
       <h1 className="text-h1 text-fg">{t("passBuy.title")}</h1>
       <p className="text-body text-muted">{t("passBuy.intro")}</p>
 
+      {/* D-042: options that apply to the pass bought below */}
+      <Card padding="md" className="flex flex-col gap-3">
+        <label className="flex min-h-11 items-center gap-3 text-body text-fg">
+          <Checkbox checked={forChild} onCheckedChange={(v) => setForChild(v === true)} />
+          <Baby className="size-5 text-primary" aria-hidden="true" />
+          {t("passBuy.forChild")}
+        </label>
+        {forChild ? (
+          <>
+            <p className="text-small text-muted">{t("passBuy.childHint")}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field id="child-name" label={t("passBuy.childName")} className="col-span-2">
+                <Input value={childName} maxLength={100} onChange={(e) => setChildName(e.currentTarget.value)} />
+              </Field>
+              <Field id="child-age" label={t("passBuy.childAge")}>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={CHILD_CARD_MAX_AGE - 1}
+                  value={childAge}
+                  onChange={(e) => setChildAge(e.currentTarget.value)}
+                />
+              </Field>
+            </div>
+          </>
+        ) : null}
+        {paid.some((type) => type.zoneScoped) ? (
+          <Field id="pass-zone" label={t("passBuy.zoneLabel")} hint={t("passBuy.zoneHint")}>
+            <select
+              value={zone}
+              onChange={(e) => setZone(e.currentTarget.value)}
+              className="h-11 w-full rounded-md border border-strong bg-surface-raised px-3 text-body text-fg"
+            >
+              <option value="">{t("passBuy.zonePick")}</option>
+              {(districts.data ?? []).map((d) => (
+                <option key={d.id} value={d.id}>
+                  {pick(d)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : null}
+      </Card>
+
+      {formError && (
+        <p role="alert" className="text-small text-status-danger">
+          {formError}
+        </p>
+      )}
       {failure && (
         <p role="alert" className="text-small text-status-danger">
           {failure}
@@ -115,6 +187,12 @@ export function BuyPassView() {
                     <h2 className="min-w-0 text-h3 text-fg">{name}</h2>
                     <span className="text-h3 tabular-nums text-fg">{amount}</span>
                   </div>
+                  {type.zoneScoped ? (
+                    <span className="inline-flex items-center gap-1 self-start rounded-full bg-status-info-soft px-2 py-0.5 text-small font-medium text-status-info">
+                      <MapPinned className="size-4" aria-hidden="true" />
+                      {t("passBuy.zoneBadge")}
+                    </span>
+                  ) : null}
                   {type.isDemo && <ToneChip tone="warning" size="sm" icon={FlaskConical} label={t("passBuy.demoPrice")} className="self-start" />}
                   <p className="text-body text-fg">{t(`passBuy.forWho.${type.kind}`)}</p>
                   <p className="text-small text-muted">

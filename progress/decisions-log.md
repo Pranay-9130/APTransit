@@ -352,6 +352,26 @@ The only way to change a locked doc in `docs/`. Add an entry, agree at the daily
   - Numbered D-041 because D-034 to D-040 are reserved for the v2 phases in prompts/v2-journey-plan.md.
   - Still needed outside the code (owner's accounts): verify a sending domain in Resend, set `EMAIL_FROM` on that domain and `APP_ENV=staging` on Render, then `OTP_DEV_ECHO=0`.
 - **Status:** Proposed for the other dev review.
+### D-042: v3 citizen features (owner request)
+- **Date:** 2026-10-11
+- **Raised by:** Product owner (field feedback), built on branch `a/v3-transit-ux`
+- **Docs affected:** 02, 05, 06, 07, 09, 11, 12, 15, 18, 19
+- **Decision:**
+  - Theme: light blue and white (token values only, names unchanged, AA test passes). Bus opening animation on every full load (pure CSS, aria hidden, reduced motion aware).
+  - Login first: `/` is in `PROTECTED_PREFIXES`; search, track and timetable stay public. E2E-1 and a11y now log in before home.
+  - Home: Google Maps style From and To plus a MapLibre stop picker, "use my location", keyboard list. New public `GET /places/nearby`; `PlaceDto` gains optional `lat`, `lng`.
+  - Search service fit (`villageFit`): a village end lists only `VILLAGE_SERVICE_TYPES` when any exist, else everything.
+  - Group tickets: children under 12 pay 50 percent (`groupFare`, `splitGroupTotal`). Day pass, zone day and zone monthly passes (`zoneScoped`, `zoneDistrictId`). Child cards (`holderName`, `holderAge`) send `CHILD_BOARDED` to the parent on each valid scan. Migration `20261011000000_v3_passes_children`.
+  - QR period 3 s (was 30), window plus or minus one step.
+  - Passengers per stage on `GET /ops/trips/:id` (`stages`, `passBoardings`). Pass scans carry no stop yet.
+  - Long journey route VJA-VSP-01 (overnight). Search shows "next day" arrivals. Terms page `/terms`; account links to passes, help and terms.
+  - Prices and ages are assumptions **(A)**, listed in docs/18.
+- **Status:** Built and tested locally. Needs the other dev review and owner confirmation of the (A) values.
+
+### D-043: Sign in with Google
+- **Date:** 2026-10-11
+- **Decision:** Google Identity Services button on `/login` (popup). `POST /auth/google { credential }` verifies the ID token with Google tokeninfo (no new dependency), checks aud, issuer, expiry and verified email, finds or creates the user by email, issues the normal session. Optional env `GOOGLE_CLIENT_ID` (API) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (web); unset hides the button and the API answers 403. CSP allows accounts.google.com/gsi. 10 per IP per minute.
+- **Status:** Built. Needs a Google Cloud OAuth client id (docs/15) before it shows.
 
 ## Parked (ideas outside the 20 day scope)
 

@@ -14,6 +14,25 @@ Read order for a new session:
 
 ---
 
+## Current state (v3 owner feedback round, 2026-10-11)
+
+Branch `a/v3-transit-ux`, merged with upstream main (states, boarding record, pass catalog) on 2026-10-11. My zone passes use the upstream `DAY` and `MONTHLY` kinds; my DAILY kind was dropped. D-042 and D-043 in the decisions log; docs 02, 05, 06, 07, 09, 11, 12, 15, 18, 19 updated.
+
+| New | Where |
+| --- | --- |
+| Light blue tokens, splash utilities, `h-home-map` | `packages/ui/src/tokens.css` |
+| Bus splash (root layout) | `apps/web/components/bus-splash.tsx` |
+| Login first (`/` protected) | `apps/web/proxy.ts` |
+| Map picker home | `apps/web/app/(citizen)/map-picker.tsx`, `GET /places/nearby` |
+| Google sign in | `apps/web/components/google-sign-in.tsx`, `POST /auth/google`, env `GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` |
+| Village service fit | `villageFit` in `apps/api/src/modules/network/network.service.ts` |
+| Child fares | `groupFare`, `splitGroupTotal` in `packages/shared/src/fare.ts` |
+| Zone and child passes, CHILD_BOARDED | passes service, `validate.service.ts`, notifications subscriber, migration `20261011000000_v3_passes_children` |
+| QR 3 s | `QR_PERIOD_SEC` in `packages/shared/src/qr.ts`, seed setting |
+| Stage counts | `OpsService.tripProfile`, ops trip page |
+| Terms | `apps/web/app/(citizen)/terms/page.tsx` |
+
+New gotchas: Python on Windows writes CRLF (breaks `tokens.test.ts` parsing): write with newline set to LF. Headless Chromium does not paint MapLibre tiles. PGlite 0.0.20 crashes during seed; `@electric-sql/pglite-socket@latest --max-connections=1` works.
 ## Current state (v2 P2 state model and login email error on main, 2026-10-09)
 
 Work follows `prompts/v2-journey-plan.md`. P1 (minimal UI, D-033) is on main. P2 (State > District, multi state scope, D-034) and the login email error (503 `EMAIL_DELIVERY_FAILED`, D-041) were pushed straight to main on 2026-10-09 at the owner's request, without a PR; the other dev should still review D-034 and D-041 (shared contract changes). Run `pnpm --filter api exec prisma migrate deploy` on every database (two new migrations). Real Gmail login still needs a verified Resend domain, `EMAIL_FROM` and `APP_ENV=staging` on Render, then `OTP_DEV_ECHO=0`. P3 (boarding record and segment validation, D-035) followed the same way: every scan is a boarding record with bus, stop, source, position and validator; ValidateService takes a ValidatorContext so P5 door scanners reuse it; stop checks are skipped when the stop source is NONE. P4 (pass catalog, D-036) followed: seven pass kinds with DEMO prices, a purchase time copy on every pass so admin edits never change sold passes, group passes (Family boards 4 per trip), the school pass with a STUDENT check and route restriction, and /admin/policies/pass-types. Next: P6 (field shell), then P5, P7, P8, P9.
