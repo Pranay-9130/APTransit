@@ -1,6 +1,17 @@
-import type { BusStandDto, BusStandRouteDto, DistrictDto, RouteDto, ServiceType, TripStatus } from "@aptransit/shared";
+import type {
+  BusStandDto,
+  BusStandRouteDto,
+  DistrictDto,
+  RouteDto,
+  ServiceType,
+  TripStatus,
+} from "@aptransit/shared";
 import { BUS_TYPES, DISTRICTS, ROUTE_DEFS, STOPS, TIMETABLE_DEFS } from "../prisma/seed-data";
-import type { StopSearchRow, TripRow, TripRowsArgs } from "../src/modules/network/network.repository";
+import type {
+  StopSearchRow,
+  TripRow,
+  TripRowsArgs,
+} from "../src/modules/network/network.repository";
 import { generateTripsForTimetables } from "../src/modules/trips/trip-generator";
 
 // In memory copy of the docs/19 network with the same query semantics as NetworkRepository,
@@ -48,7 +59,14 @@ export class FakeNetworkRepository {
 
   constructor({ dates, routeCodes }: NetworkFixtureOptions) {
     const allRoutes: FixtureRoute[] = ROUTE_DEFS.flatMap((def) => [
-      { id: routeId(def.code), code: def.code, nameEn: def.nameEn, nameTe: def.nameTe, isActive: true, stops: def.stops },
+      {
+        id: routeId(def.code),
+        code: def.code,
+        nameEn: def.nameEn,
+        nameTe: def.nameTe,
+        isActive: true,
+        stops: def.stops,
+      },
       {
         id: routeId(def.reverseCode),
         code: def.reverseCode,
@@ -58,13 +76,16 @@ export class FakeNetworkRepository {
         stops: [...def.stops].reverse().map((s) => ({
           stopCode: s.stopCode,
           kmFromOrigin: def.stops[def.stops.length - 1]!.kmFromOrigin - s.kmFromOrigin,
-          minutesFromOrigin: def.stops[def.stops.length - 1]!.minutesFromOrigin - s.minutesFromOrigin,
+          minutesFromOrigin:
+            def.stops[def.stops.length - 1]!.minutesFromOrigin - s.minutesFromOrigin,
         })),
       },
     ]);
     this.routes = routeCodes ? allRoutes.filter((r) => routeCodes.includes(r.code)) : allRoutes;
 
-    const timetables = TIMETABLE_DEFS.filter((t) => this.routes.some((r) => r.code === t.routeCode)).map((t, i) => {
+    const timetables = TIMETABLE_DEFS.filter((t) =>
+      this.routes.some((r) => r.code === t.routeCode),
+    ).map((t, i) => {
       const route = this.routes.find((r) => r.code === t.routeCode)!;
       return {
         id: `tt${i}`,
@@ -118,6 +139,19 @@ export class FakeNetworkRepository {
       }));
   }
 
+  async allStops(): Promise<Required<StopSearchRow>[]> {
+    return STOPS.map((s) => ({
+      id: stopId(s.code),
+      nameEn: s.nameEn,
+      nameTe: s.nameTe,
+      isBusStand: s.isBusStand,
+      districtNameEn: this.district(s.districtCode).nameEn,
+      districtNameTe: this.district(s.districtCode).nameTe,
+      lat: s.lat,
+      lng: s.lng,
+    }));
+  }
+
   async districts(): Promise<DistrictDto[]> {
     this.calls.districts++;
     return DISTRICTS.map((d) => ({
@@ -140,7 +174,11 @@ export class FakeNetworkRepository {
           nameEn: r.nameEn,
           nameTe: r.nameTe,
           destination: { id: stopId(dest.code), nameEn: dest.nameEn, nameTe: dest.nameTe },
-          serviceTypes: [...new Set(TIMETABLE_DEFS.filter((t) => t.routeCode === r.code).map((t) => t.serviceType))].sort(),
+          serviceTypes: [
+            ...new Set(
+              TIMETABLE_DEFS.filter((t) => t.routeCode === r.code).map((t) => t.serviceType),
+            ),
+          ].sort(),
         };
       })
       .sort((a, b) => a.code.localeCompare(b.code));
@@ -150,7 +188,12 @@ export class FakeNetworkRepository {
     const d = DISTRICTS.find((x) => districtId(x.code) === id);
     if (!d) return null;
     return STOPS.filter((s) => s.isBusStand && s.districtCode === d.code)
-      .map((s) => ({ id: busStandId(s.code), nameEn: s.nameEn, nameTe: s.nameTe, routeCount: this.routesLeaving(s.code).length }))
+      .map((s) => ({
+        id: busStandId(s.code),
+        nameEn: s.nameEn,
+        nameTe: s.nameTe,
+        routeCount: this.routesLeaving(s.code).length,
+      }))
       .sort((a, b) => a.nameEn.localeCompare(b.nameEn));
   }
 
@@ -194,7 +237,13 @@ export class FakeNetworkRepository {
     };
   }
 
-  async tripRows({ fromStopId, toStopId, serviceDate, routeId: onlyRoute, includeCancelled = false }: TripRowsArgs): Promise<TripRow[]> {
+  async tripRows({
+    fromStopId,
+    toStopId,
+    serviceDate,
+    routeId: onlyRoute,
+    includeCancelled = false,
+  }: TripRowsArgs): Promise<TripRow[]> {
     this.calls.tripRows++;
     const rows: TripRow[] = [];
     for (const trip of this.trips) {
@@ -227,14 +276,21 @@ export class FakeNetworkRepository {
           minFarePaise: bt.minFarePaise,
           reservationFeePaise: bt.reservationFeePaise,
         },
+        villageEnd: [fromStopId, toStopId].some(
+          (id) => !STOPS.find((st) => stopId(st.code) === id)?.isBusStand,
+        ),
       });
     }
-    return rows.sort((a, b) => a.departureMs + a.fromMinutes * 60_000 - (b.departureMs + b.fromMinutes * 60_000));
+    return rows.sort(
+      (a, b) => a.departureMs + a.fromMinutes * 60_000 - (b.departureMs + b.fromMinutes * 60_000),
+    );
   }
 
   async seatsTaken(tripIds: string[]): Promise<Map<string, number>> {
     this.calls.seatsTaken++;
-    return new Map(tripIds.filter((id) => this.taken.has(id)).map((id) => [id, this.taken.get(id)!]));
+    return new Map(
+      tripIds.filter((id) => this.taken.has(id)).map((id) => [id, this.taken.get(id)!]),
+    );
   }
 
   async settingNumber(key: string): Promise<number | null> {

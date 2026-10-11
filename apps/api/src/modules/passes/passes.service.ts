@@ -1,11 +1,25 @@
-import { generatePassCode, type PassDto, type PassQrDto, type PassTypeDto, QR_PERIOD_SEC } from "@aptransit/shared";
+import {
+  type CreatePassInput,
+  generatePassCode,
+  type PassDto,
+  type PassQrDto,
+  type PassTypeDto,
+  QR_PERIOD_SEC,
+} from "@aptransit/shared";
 import { Injectable } from "@nestjs/common";
 import { AppError } from "../../common/errors/app-error";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService, type LogAuditParams } from "../audit/audit.service";
 import { EligibilityService } from "../eligibility/eligibility.service";
 import { QrService } from "../tickets/qr.service";
-import { canActivatePass, canCreatePass, PASS_PAYMENT_ABANDON_MINUTES, PASS_SETTING_DEFAULTS, passActivateBy, passValidity } from "./pass-rules";
+import {
+  canActivatePass,
+  canCreatePass,
+  PASS_PAYMENT_ABANDON_MINUTES,
+  PASS_SETTING_DEFAULTS,
+  passActivateBy,
+  passValidity,
+} from "./pass-rules";
 
 type AuditActor = Pick<LogAuditParams, "actorUserId" | "actorRole" | "ip" | "userAgent">;
 
@@ -25,6 +39,7 @@ interface LoadedPassType {
   pricePaise: number;
   eligibleServiceTypes: PassDto["eligibleServiceTypes"];
   scheme: "STREE_SHAKTI" | null;
+  zoneScoped: boolean;
   isActive: boolean;
 }
 
@@ -38,6 +53,9 @@ export interface LoadedPass {
   validFrom: Date | null;
   validUntil: Date | null;
   qrSecret: string;
+  zoneDistrictId: string | null;
+  holderName: string | null;
+  holderAge: number | null;
   createdAt: Date;
   passType: LoadedPassType;
   eligibilityCheck: { expiresAt: Date } | null;
@@ -54,7 +72,10 @@ export class PassesService {
   ) {}
 
   async listTypes(): Promise<PassTypeDto[]> {
-    const types = (await this.prisma.passType.findMany({ where: { isActive: true }, orderBy: { pricePaise: "asc" } })) as LoadedPassType[];
+    const types = (await this.prisma.passType.findMany({
+      where: { isActive: true },
+      orderBy: { pricePaise: "asc" },
+    })) as LoadedPassType[];
     return types.map((t) => ({
       id: t.id,
       kind: t.kind,
@@ -64,6 +85,7 @@ export class PassesService {
       pricePaise: t.pricePaise,
       eligibleServiceTypes: t.eligibleServiceTypes,
       scheme: t.scheme,
+      zoneScoped: t.zoneScoped,
     }));
   }
 
@@ -74,7 +96,9 @@ export class PassesService {
       orderBy: { createdAt: "desc" },
     })) as unknown as LoadedPass[];
     const days = await this.activateWithinDays();
-    const activeKinds = new Set(passes.filter((p) => p.status === "ACTIVE").map((p) => p.passType.kind));
+    const activeKinds = new Set(
+      passes.filter((p) => p.status === "ACTIVE").map((p) => p.passType.kind),
+    );
     return passes.map((p) => this.toDto(p, days, activeKinds.has(p.passType.kind), now));
   }
 
@@ -82,20 +106,48 @@ export class PassesService {
    * POST /passes. Paid kinds start PENDING_PAYMENT (a recent unpaid one of the same type is reused,
    * so a retried Buy never makes two). FREE_TRAVEL is READY at once, but only with a current ELIGIBLE check.
    */
-  async create(userId: string, passTypeId: string, actor: AuditActor, now = new Date()): Promise<PassDto> {
-    const type = (await this.prisma.passType.findUnique({ where: { id: passTypeId } })) as LoadedPassType | null;
+  async create(
+    userId: string,
+    passTypeId: string,
+    actor: AuditActor,
+    now = new Date(),
+    options: Pick<CreatePassInput, "zoneDistrictId" | "child"> = {},
+  ): Promise<PassDto> {
+    const type = (await this.prisma.passType.findUnique({
+      where: { id: passTypeId },
+    })) as LoadedPassType | null;
     if (!type?.isActive) throw new AppError("NOT_FOUND", "Pass type not found");
+    // D-034: a zone pass names its district; other passes never carry one.
+    let zoneDistrictId: string | null = null;
+    if (type.zoneScoped) {
+      const district = options.zoneDistrictId
+        ? await this.prisma.district.findUnique({
+            where: { id: options.zoneDistrictId },
+            select: { id: true },
+          })
+        : null;
+      if (!district)
+        throw new AppError("VALIDATION_FAILED", "Pick the district this zone pass is for", {
+          field: "zoneDistrictId",
+        });
+      zoneDistrictId = district.id;
+    }
+    const child = type.kind === "FREE_TRAVEL" ? undefined : options.child;
 
     const check = type.kind === "FREE_TRAVEL" ? await this.eligibility.current(userId) : null;
     const openFree =
       type.kind === "FREE_TRAVEL"
-        ? (await this.prisma.pass.count({ where: { userId, passTypeId: type.id, status: { in: ["READY", "ACTIVE"] } } })) > 0
+        ? (await this.prisma.pass.count({
+            where: { userId, passTypeId: type.id, status: { in: ["READY", "ACTIVE"] } },
+          })) > 0
         : false;
     const rule = canCreatePass(type.kind, check, openFree, now);
     if (!rule.ok) {
       throw new AppError(
         rule.error,
-        rule.error === "ELIGIBILITY_REQUIRED" ? "A free travel pass needs an eligibility check first" : "You already have a free travel pass",
+        rule.error === "ELIGIBILITY_REQUIRED"
+          ? "A free travel pass needs an eligibility check first"
+          : "You already have a free travel pass",
       );
     }
 
@@ -105,6 +157,8 @@ export class PassesService {
           userId,
           passTypeId: type.id,
           status: "PENDING_PAYMENT",
+          zoneDistrictId,
+          holderName: child?.name ?? null,
           createdAt: { gt: new Date(now.getTime() - PASS_PAYMENT_ABANDON_MINUTES * MS_PER_MIN) },
         },
         include: PASS_INCLUDE,
@@ -121,6 +175,9 @@ export class PassesService {
         status: type.kind === "FREE_TRAVEL" ? "READY" : "PENDING_PAYMENT",
         eligibilityCheckId: check?.id ?? null,
         qrSecret: this.qr.newRotSecret(),
+        zoneDistrictId,
+        holderName: child?.name ?? null,
+        holderAge: child?.age ?? null,
         createdAt: now,
       },
       include: PASS_INCLUDE,
@@ -129,24 +186,45 @@ export class PassesService {
       action: "pass.create",
       entityType: "pass",
       entityId: pass.id,
-      after: { kind: type.kind, status: pass.status },
+      after: { kind: type.kind, status: pass.status, zoneDistrictId, childCard: Boolean(child) },
       ...actor,
     });
     return this.toDto(pass, await this.activateWithinDays(), false, now);
   }
 
-  async activate(userId: string, passId: string, actor: AuditActor, now = new Date()): Promise<PassDto> {
+  async activate(
+    userId: string,
+    passId: string,
+    actor: AuditActor,
+    now = new Date(),
+  ): Promise<PassDto> {
     const pass = await this.load(userId, passId);
     const days = await this.activateWithinDays();
     const otherActive = await this.prisma.pass.count({
-      where: { userId, id: { not: pass.id }, status: "ACTIVE", passType: { kind: pass.passType.kind }, validUntil: { gt: now } },
+      where: {
+        userId,
+        id: { not: pass.id },
+        status: "ACTIVE",
+        passType: { kind: pass.passType.kind },
+        holderName: pass.holderName,
+        validUntil: { gt: now },
+      },
     });
     const rule = canActivatePass(pass, days, otherActive > 0, now);
     if (!rule.ok) {
-      throw new AppError(rule.error, rule.error === "PASS_ALREADY_ACTIVE" ? "You already have an active pass of this kind" : "This pass cannot be activated");
+      throw new AppError(
+        rule.error,
+        rule.error === "PASS_ALREADY_ACTIVE"
+          ? "You already have an active pass of this kind"
+          : "This pass cannot be activated",
+      );
     }
 
-    const { validFrom, validUntil } = passValidity(now, pass.passType.durationDays, pass.eligibilityCheck?.expiresAt);
+    const { validFrom, validUntil } = passValidity(
+      now,
+      pass.passType.durationDays,
+      pass.eligibilityCheck?.expiresAt,
+    );
     // Conditional update: a parallel activate finds the status moved on
     const { count } = await this.prisma.pass.updateMany({
       where: { id: pass.id, status: "READY" },
@@ -169,20 +247,38 @@ export class PassesService {
   /** Same shape as the ticket QR, "t": "P". The rotating secret only while ACTIVE. */
   async qrFor(userId: string, passId: string, now = new Date()): Promise<PassQrDto> {
     const pass = await this.load(userId, passId);
-    const until = pass.validUntil ?? passActivateBy(pass.createdAt, await this.activateWithinDays());
-    const token = this.qr.signToken({ t: "P", i: pass.id, tr: null, d: null, v: Math.floor(until.getTime() / 1000) });
-    const rotSecret = pass.status === "ACTIVE" ? this.qr.decryptRotSecret(pass.qrSecret).toString("base64url") : null;
+    const until =
+      pass.validUntil ?? passActivateBy(pass.createdAt, await this.activateWithinDays());
+    const token = this.qr.signToken({
+      t: "P",
+      i: pass.id,
+      tr: null,
+      d: null,
+      v: Math.floor(until.getTime() / 1000),
+    });
+    const rotSecret =
+      pass.status === "ACTIVE"
+        ? this.qr.decryptRotSecret(pass.qrSecret).toString("base64url")
+        : null;
     return { token, rotSecret, periodSec: QR_PERIOD_SEC, serverTime: now.toISOString() };
   }
 
   /** Owner only. Another user's pass is NOT_FOUND, never FORBIDDEN. */
   private async load(userId: string, passId: string): Promise<LoadedPass> {
-    const pass = (await this.prisma.pass.findFirst({ where: { id: passId, userId }, include: PASS_INCLUDE })) as unknown as LoadedPass | null;
+    const pass = (await this.prisma.pass.findFirst({
+      where: { id: passId, userId },
+      include: PASS_INCLUDE,
+    })) as unknown as LoadedPass | null;
     if (!pass) throw new AppError("NOT_FOUND", "Pass not found");
     return pass;
   }
 
-  private toDto(pass: LoadedPass, activateWithinDays: number, hasActiveOfKind: boolean, now: Date): PassDto {
+  private toDto(
+    pass: LoadedPass,
+    activateWithinDays: number,
+    hasActiveOfKind: boolean,
+    now: Date,
+  ): PassDto {
     return {
       id: pass.id,
       code: pass.code,
@@ -194,20 +290,36 @@ export class PassesService {
       pricePaise: pass.passType.pricePaise,
       durationDays: pass.passType.durationDays,
       eligibleServiceTypes: pass.passType.eligibleServiceTypes,
+      zoneDistrictId: pass.zoneDistrictId,
+      holderName: pass.holderName,
+      holderAge: pass.holderAge,
       createdAt: pass.createdAt.toISOString(),
       activateBy: passActivateBy(pass.createdAt, activateWithinDays).toISOString(),
       activatedAt: pass.activatedAt?.toISOString() ?? null,
       validFrom: pass.validFrom?.toISOString() ?? null,
       validUntil: pass.validUntil?.toISOString() ?? null,
-      activationValidUntil: (pass.validUntil ?? passValidity(now, pass.passType.durationDays, pass.eligibilityCheck?.expiresAt).validUntil).toISOString(),
-      canActivate: canActivatePass(pass, activateWithinDays, pass.status === "READY" && hasActiveOfKind, now).ok,
+      activationValidUntil: (
+        pass.validUntil ??
+        passValidity(now, pass.passType.durationDays, pass.eligibilityCheck?.expiresAt).validUntil
+      ).toISOString(),
+      canActivate: canActivatePass(
+        pass,
+        activateWithinDays,
+        pass.status === "READY" && hasActiveOfKind,
+        now,
+      ).ok,
     };
   }
 
   private async activateWithinDays(): Promise<number> {
     try {
-      const row = await this.prisma.setting.findUnique({ where: { key: "pass.activateWithinDays" }, select: { value: true } });
-      return typeof row?.value === "number" ? row.value : PASS_SETTING_DEFAULTS["pass.activateWithinDays"];
+      const row = await this.prisma.setting.findUnique({
+        where: { key: "pass.activateWithinDays" },
+        select: { value: true },
+      });
+      return typeof row?.value === "number"
+        ? row.value
+        : PASS_SETTING_DEFAULTS["pass.activateWithinDays"];
     } catch {
       return PASS_SETTING_DEFAULTS["pass.activateWithinDays"];
     }

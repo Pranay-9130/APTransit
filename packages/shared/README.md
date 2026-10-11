@@ -60,3 +60,9 @@ schemas/ops.ts provides strict request schemas and response DTOs for the operati
 ## Day 14
 
 Day 14 adds schemas/admin.ts for strict admin mutation inputs and validated responses. Ops DTOs include scoped depot/bus-type lookups, optional current fleet details and an inferred OpsTripDto type. INCIDENT_STATUS_MAP centralizes incident labels, icons and tones. Shared changes require the other dev review (D-029).
+
+## v3 (D-034)
+
+- `fare.ts`: `CHILD_MAX_AGE`, `CHILD_FARE_PERCENT`, `passengerCategory`, `passengerFarePaise`, `groupFare`, `splitGroupTotal`.
+- `enums.ts`: `VILLAGE_SERVICE_TYPES`, `PassKind.DAILY`, `NotificationType.CHILD_BOARDED`. `qr.ts`: `QR_PERIOD_SEC = 3`.
+- Schemas: `GoogleSignInInput`, `PlacesNearbyQuery`, `NearbyPlaceDto`, `StageBoardingDto`, pass zone and child fields, `CHILD_CARD_MAX_AGE`.

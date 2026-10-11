@@ -64,6 +64,20 @@
       "minChars": "Type at least 2 letters.",
       "busStandIn": "Bus stand, {district}",
       "stopIn": "Stop, {district}"
+    },
+    "map": {
+      "title": "Pick on the map",
+      "useMyLocation": "Use my location",
+      "noLocation": "We could not find your location. Pick a stop on the map or type a place.",
+      "error": "The map could not load.",
+      "retry": "Try again",
+      "setFrom": "Set as from",
+      "setTo": "Set as to",
+      "listTitle": "Stops near you (list)",
+      "empty": "No stops found here.",
+      "distance": "{km} km away",
+      "from": "From",
+      "to": "To"
     }
   },
   "search": {
@@ -71,7 +85,7 @@
     "title": "Search results",
     "editSearch": "Edit search",
     "changeRoute": "Change route",
-    "nextDay": "Next day",
+    "nextDay": "{time}, next day",
     "previousDay": "Previous day",
     "emptyTitle": "No buses for this date.",
     "emptyHint": "Try picking another date or searching between nearby bus stands.",
@@ -347,7 +361,10 @@
       "rateLimited": "Too many tries. Try again in {seconds} s.",
       "email": "Enter a valid email address, like you@example.com.",
       "phone": "Enter your 10 digit mobile number."
-    }
+    },
+    "googleFailed": "Google sign in did not work. Try again or use a code.",
+    "or": "or",
+    "terms": "By continuing you agree to the <terms>terms and conditions</terms>."
   },
   "account": {
     "loadFailed": "Your account could not load",
@@ -371,6 +388,13 @@
     "roles": {
       "title": "Your roles",
       "hint": "Open the screen for the role you want to use."
+    },
+    "more": "Passes, help and terms",
+    "links": {
+      "passes": "My passes",
+      "childCard": "Buy a pass or child card",
+      "help": "Help and complaints",
+      "terms": "Terms and conditions"
     }
   },
   "roles": {
@@ -437,7 +461,8 @@
         "name": "Enter the passenger's name.",
         "age": "Enter an age from 1 to 120.",
         "gender": "Choose a gender."
-      }
+      },
+      "childHint": "Under {age} travels at half fare."
     },
     "review": {
       "heading": "Review and pay",
@@ -462,7 +487,8 @@
       "payBlocked": "The payment window could not open. Check your connection and try again.",
       "checkingTitle": "We are checking your payment",
       "checkingHint": "If money left your account, your ticket appears in My tickets in a few minutes. If not, it is refunded on its own. Quote booking {code} if you contact support.",
-      "paymentDescription": "{route}, {date}"
+      "paymentDescription": "{route}, {date}",
+      "group": "{adults, plural, one {# adult} other {# adults}} and {children, plural, one {# child} other {# children}} (child fare {childFare})"
     },
     "done": {
       "title": "Ticket booked",
@@ -639,7 +665,8 @@
       "ACTIVE": "Active",
       "EXPIRED": "Expired",
       "CANCELLED": "Cancelled"
-    }
+    },
+    "childCard": "Child card for {name}, age {age}"
   },
   "passBuy": {
     "title": "Buy pass",
@@ -654,7 +681,17 @@
     "freeTitle": "Free travel (Stree Shakti)",
     "freeHint": "For women, girls and transgender persons who live in Andhra Pradesh.",
     "freeCta": "Check eligibility",
-    "errorTitle": "Passes could not load"
+    "errorTitle": "Passes could not load",
+    "zoneRequired": "Pick the district for this zone pass.",
+    "childInvalid": "Enter the name of the child and an age from 1 to {max}.",
+    "zoneBadge": "One district (zone)",
+    "zoneLabel": "District (zone)",
+    "zoneHint": "The pass works on village and ordinary buses inside this district only.",
+    "zonePick": "Choose a district",
+    "forChild": "This pass is for my child",
+    "childHint": "You will get a message each time your child boards a bus with this card.",
+    "childName": "Name of the child",
+    "childAge": "Age"
   },
   "freeTravelPage": {
     "intro": "Women, girls and transgender persons who live in Andhra Pradesh travel free on these buses: {services}.",
@@ -1092,7 +1129,15 @@
       "assignToMe": "Assign to me",
       "saved": "Saved. The citizen is told about status changes."
     },
-    "name": "Name"
+    "name": "Name",
+    "stages": {
+      "title": "Passengers per stage",
+      "stop": "Stop",
+      "booked": "Booked here",
+      "boarded": "Boarded",
+      "alighting": "Getting off",
+      "passes": "{count, plural, =0 {No pass holders boarded yet.} one {# pass holder boarded (stop not recorded).} other {# pass holders boarded (stop not recorded).}}"
+    }
   },
   "adminApp": {
     "overview": "Admin overview",
@@ -1431,5 +1476,49 @@
     },
     "notYet": "not yet",
     "resolutionNote": "Note from the depot"
+  },
+  "splash": {
+    "brand": "AP TransitOS",
+    "tagline": "Your bus, on time, every village"
+  },
+  "terms": {
+    "title": "Terms and conditions",
+    "updated": "Last updated 11 October 2026",
+    "tickets": {
+      "title": "Single tickets",
+      "body": "A single ticket is for one seat on one bus, from one stop to another, on the date shown. Show the live QR to the conductor when you board."
+    },
+    "groups": {
+      "title": "Group tickets",
+      "body": "You can book up to 6 people together. Children under 12 pay half the adult fare. Enter the real age of each person: the conductor may ask for proof."
+    },
+    "passes": {
+      "title": "Day, weekly, monthly and zone passes",
+      "body": "A pass gives unlimited trips while it is active, one scan per trip. A zone pass works only on village and ordinary buses inside the one district you picked."
+    },
+    "children": {
+      "title": "Child cards",
+      "body": "A parent can buy a pass for a child under 18. Each time the card is scanned on a bus, the parent gets a message with the route and time."
+    },
+    "qr": {
+      "title": "Live QR codes",
+      "body": "The QR code changes every 3 seconds. Screenshots and forwarded codes stop working, so always open the live ticket in the app."
+    },
+    "refunds": {
+      "title": "Cancellations and refunds",
+      "body": "Refunds follow the policy shown before you cancel. The reservation fee is not refunded. Money returns to the way you paid."
+    },
+    "conduct": {
+      "title": "On the bus",
+      "body": "Carry a photo ID for free travel and concession passes. Follow the instructions of the conductor and keep the bus clean and safe."
+    },
+    "privacy": {
+      "title": "Your data",
+      "body": "We keep your name, phone or email, tickets and trips to run the service. We never sell your data. Location is used only while you choose to share it."
+    },
+    "account": {
+      "title": "Your account",
+      "body": "You can sign in with an email or phone code, or with Google. Keep your phone safe. You can ask us to delete your account at any time."
+    }
   }
 }

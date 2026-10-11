@@ -6,14 +6,7 @@ import type { Prisma } from "../src/generated/prisma/client";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { TimetableInput } from "../src/modules/trips/trip-generator";
 import { generateTripsForTimetables } from "../src/modules/trips/trip-generator";
-import {
-  BUS_TYPES,
-  DEPOTS,
-  DISTRICTS,
-  ROUTE_DEFS,
-  TIMETABLE_DEFS,
-  STOPS,
-} from "./seed-data";
+import { BUS_TYPES, DEPOTS, DISTRICTS, ROUTE_DEFS, TIMETABLE_DEFS, STOPS } from "./seed-data";
 
 try {
   process.loadEnvFile(".env");
@@ -50,7 +43,7 @@ export async function runSeed(): Promise<void> {
     "gift.cutoffMinutesBefore": 120,
     "gift.maxTransfers": 1,
     "pass.activateWithinDays": 30,
-    "qr.periodSec": 30,
+    "qr.periodSec": 3,
     "qr.windowSteps": 1,
   };
 
@@ -244,7 +237,44 @@ export async function runSeed(): Promise<void> {
     "PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY" | "METRO_EXPRESS" | "EXPRESS"
   > = ["PALLEVELUGU", "ULTRA_PALLEVELUGU", "CITY_ORDINARY", "METRO_EXPRESS", "EXPRESS"];
 
+  const villageServices: Array<"PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY"> = [
+    "PALLEVELUGU",
+    "ULTRA_PALLEVELUGU",
+    "CITY_ORDINARY",
+  ];
+
+  // D-034: daily, weekly and monthly passes; zone passes are valid in one district the buyer picks.
   const passTypes = [
+    {
+      kind: "DAILY" as const,
+      nameEn: "Day Pass",
+      nameTe: "రోజు పాస్",
+      durationDays: 1,
+      pricePaise: 15000,
+      eligibleServiceTypes: standardServices,
+      scheme: undefined,
+      zoneScoped: false,
+    },
+    {
+      kind: "DAILY" as const,
+      nameEn: "Zone Day Pass",
+      nameTe: "జోన్ రోజు పాస్",
+      durationDays: 1,
+      pricePaise: 6000,
+      eligibleServiceTypes: villageServices,
+      scheme: undefined,
+      zoneScoped: true,
+    },
+    {
+      kind: "MONTHLY" as const,
+      nameEn: "Zone Monthly Pass",
+      nameTe: "జోన్ నెలవారీ పాస్",
+      durationDays: 30,
+      pricePaise: 90000,
+      eligibleServiceTypes: villageServices,
+      scheme: undefined,
+      zoneScoped: true,
+    },
     {
       kind: "WEEKLY" as const,
       nameEn: "Weekly Pass",
@@ -253,6 +283,7 @@ export async function runSeed(): Promise<void> {
       pricePaise: 45000,
       eligibleServiceTypes: standardServices,
       scheme: undefined,
+      zoneScoped: false,
     },
     {
       kind: "MONTHLY" as const,
@@ -262,6 +293,7 @@ export async function runSeed(): Promise<void> {
       pricePaise: 160000,
       eligibleServiceTypes: standardServices,
       scheme: undefined,
+      zoneScoped: false,
     },
     {
       kind: "FREE_TRAVEL" as const,
@@ -271,12 +303,13 @@ export async function runSeed(): Promise<void> {
       pricePaise: 0,
       eligibleServiceTypes: standardServices,
       scheme: "STREE_SHAKTI" as const,
+      zoneScoped: false,
     },
   ];
 
   for (const pt of passTypes) {
     const existing = await prisma.passType.findFirst({
-      where: { kind: pt.kind },
+      where: { kind: pt.kind, zoneScoped: pt.zoneScoped },
     });
     if (existing) {
       await prisma.passType.update({
@@ -288,6 +321,7 @@ export async function runSeed(): Promise<void> {
           pricePaise: pt.pricePaise,
           eligibleServiceTypes: pt.eligibleServiceTypes,
           scheme: pt.scheme,
+          zoneScoped: pt.zoneScoped,
         },
       });
     } else {
@@ -300,6 +334,7 @@ export async function runSeed(): Promise<void> {
           pricePaise: pt.pricePaise,
           eligibleServiceTypes: pt.eligibleServiceTypes,
           scheme: pt.scheme,
+          zoneScoped: pt.zoneScoped,
           isActive: true,
         },
       });
@@ -449,12 +484,41 @@ export async function runSeed(): Promise<void> {
   const demoUsers = [
     { email: "citizen@aptransit.test", name: "Citizen Ravi", role: "CITIZEN" as const },
     { email: "citizen2@aptransit.test", name: "Citizen Lakshmi", role: "CITIZEN" as const },
-    { email: "driver.knl@aptransit.test", name: "Driver Srinivas", role: "DRIVER" as const, depotId: knlDepotId },
-    { email: "conductor.knl@aptransit.test", name: "Conductor Prasad", role: "CONDUCTOR" as const, depotId: knlDepotId },
-    { email: "staff.knl@aptransit.test", name: "Staff Venkat", role: "DEPOT_STAFF" as const, depotId: knlDepotId },
-    { email: "manager.knl@aptransit.test", name: "Manager Ramesh", role: "DEPOT_MANAGER" as const, depotId: knlDepotId },
-    { email: "officer.knl@aptransit.test", name: "Officer Anusha", role: "DISTRICT_OFFICER" as const, districtId: knlDistrictId },
-    { email: "transport@aptransit.test", name: "Officer Chandrasekhar", role: "TRANSPORT_OFFICER" as const },
+    {
+      email: "driver.knl@aptransit.test",
+      name: "Driver Srinivas",
+      role: "DRIVER" as const,
+      depotId: knlDepotId,
+    },
+    {
+      email: "conductor.knl@aptransit.test",
+      name: "Conductor Prasad",
+      role: "CONDUCTOR" as const,
+      depotId: knlDepotId,
+    },
+    {
+      email: "staff.knl@aptransit.test",
+      name: "Staff Venkat",
+      role: "DEPOT_STAFF" as const,
+      depotId: knlDepotId,
+    },
+    {
+      email: "manager.knl@aptransit.test",
+      name: "Manager Ramesh",
+      role: "DEPOT_MANAGER" as const,
+      depotId: knlDepotId,
+    },
+    {
+      email: "officer.knl@aptransit.test",
+      name: "Officer Anusha",
+      role: "DISTRICT_OFFICER" as const,
+      districtId: knlDistrictId,
+    },
+    {
+      email: "transport@aptransit.test",
+      name: "Officer Chandrasekhar",
+      role: "TRANSPORT_OFFICER" as const,
+    },
     { email: "admin@aptransit.test", name: "Admin AP", role: "STATE_ADMIN" as const },
     { email: "root@aptransit.test", name: "Super Admin", role: "SUPER_ADMIN" as const },
   ];
@@ -559,7 +623,12 @@ export async function runSeed(): Promise<void> {
   const cityOrdinaryTypeId = busTypeMap.get("CITY_ORDINARY")!;
 
   let busNumberIndex = 101;
-  const buses: { id: string; depotId: string; busTypeId: string; status: "IDLE" | "RUNNING" | "MAINTENANCE" | "BREAKDOWN" }[] = [];
+  const buses: {
+    id: string;
+    depotId: string;
+    busTypeId: string;
+    status: "IDLE" | "RUNNING" | "MAINTENANCE" | "BREAKDOWN";
+  }[] = [];
 
   for (const dep of DEPOTS) {
     const dId = depotMap.get(dep.code)!;
@@ -665,7 +734,9 @@ export async function runSeed(): Promise<void> {
   console.log(`Generated ${tripRows.length} trips from ${todayIstStr} to ${plus7IstStr}.`);
 
   // Available buses at Kurnool for initial assignment
-  const availableBuses = buses.filter((b) => b.depotId === knlDepotId && b.status !== "BREAKDOWN" && b.status !== "MAINTENANCE");
+  const availableBuses = buses.filter(
+    (b) => b.depotId === knlDepotId && b.status !== "BREAKDOWN" && b.status !== "MAINTENANCE",
+  );
 
   // docs/19 has about 450 trips a day, so insert in batches (one row at a time takes minutes on Neon).
   const BATCH = 500;
@@ -693,7 +764,10 @@ export async function runSeed(): Promise<void> {
     let busAssignIndex = 0;
     for (let i = 0; i < tripRows.length; i += BATCH) {
       const unassigned = await prisma.trip.findMany({
-        where: { code: { in: tripRows.slice(i, i + BATCH).map((t) => t.code) }, assignments: { none: {} } },
+        where: {
+          code: { in: tripRows.slice(i, i + BATCH).map((t) => t.code) },
+          assignments: { none: {} },
+        },
         select: { id: true, scheduledDepartureAt: true },
         orderBy: { scheduledDepartureAt: "asc" },
       });

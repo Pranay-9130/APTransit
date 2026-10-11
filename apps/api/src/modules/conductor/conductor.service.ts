@@ -45,7 +45,14 @@ export class ConductorService {
         tripId: true,
         conductorId: true,
         bus: { select: { busType: { select: { serviceType: true } } } },
-        trip: { select: { status: true, route: { select: { nameEn: true } } } },
+        trip: {
+          select: {
+            status: true,
+            route: {
+              select: { nameEn: true, nameTe: true, depot: { select: { districtId: true } } },
+            },
+          },
+        },
       },
       orderBy: { trip: { scheduledDepartureAt: "asc" } },
     });

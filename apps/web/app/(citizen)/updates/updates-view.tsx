@@ -4,6 +4,7 @@ import { formatDate, formatIstDate, messageLocale, type NotificationDto, Notific
 import { Button, EmptyState, ErrorState, Skeleton } from "@aptransit/ui";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Baby,
   AlertTriangle,
   Bell,
   BellRing,
@@ -40,6 +41,7 @@ const TYPE_ICON: Record<NotificationDto["type"], LucideIcon> = {
   ROUTE_UPDATE: AlertTriangle,
   PASS_EXPIRING: TimerOff,
   COMPLAINT_UPDATE: MessageSquare,
+  CHILD_BOARDED: Baby,
 };
 
 export function UpdatesView() {

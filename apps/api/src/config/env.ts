@@ -44,6 +44,8 @@ export const EnvSchema = z
     JWT_SECRET: z.string().min(32, "must be at least 32 characters"),
     OTP_PEPPER: z.string().min(16, "must be at least 16 characters"),
     OTP_DEV_ECHO: flag,
+    /** D-035: OAuth web client id for Sign in with Google. Unset turns the button off (the API answers 403). */
+    GOOGLE_CLIENT_ID: z.string().endsWith(".apps.googleusercontent.com").optional(),
     QR_SIGNING_PRIVATE_KEY: z
       .string()
       .refine(isEd25519PemBase64, "must be a base64 encoded Ed25519 private key PEM (docs/15)"),

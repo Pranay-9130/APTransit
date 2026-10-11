@@ -14,6 +14,7 @@ export const PassTypeDto = z.object({
   pricePaise: Paise,
   eligibleServiceTypes: z.array(ServiceType),
   scheme: EligibilityScheme.nullable(),
+  zoneScoped: z.boolean().optional(),
 });
 export type PassTypeDto = z.infer<typeof PassTypeDto>;
 
@@ -29,6 +30,11 @@ export const PassDto = z.object({
   pricePaise: Paise,
   durationDays: z.number().int().positive(),
   eligibleServiceTypes: z.array(ServiceType),
+  /** D-034 zone pass: the one district it is valid in. */
+  zoneDistrictId: z.string().nullable().optional(),
+  /** D-034 child card: the child who travels; the account holder (parent) is told on each boarding. */
+  holderName: z.string().nullable().optional(),
+  holderAge: z.number().int().nullable().optional(),
   createdAt: z.string().datetime(),
   /** A READY pass must be activated before this moment (pass.activateWithinDays). */
   activateBy: z.string().datetime(),
@@ -41,8 +47,23 @@ export const PassDto = z.object({
 });
 export type PassDto = z.infer<typeof PassDto>;
 
+/** D-034: a child card is a pass for a child under CHILD_CARD_MAX_AGE, bought by the parent. */
+export const CHILD_CARD_MAX_AGE = 18;
+
 export const CreatePassInput = z.object({
   passTypeId: PublicId,
+  /** Required when the pass type is zone scoped. */
+  zoneDistrictId: PublicId.optional(),
+  child: z
+    .object({
+      name: z.string().trim().min(1).max(100),
+      age: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(CHILD_CARD_MAX_AGE - 1),
+    })
+    .optional(),
 });
 export type CreatePassInput = z.infer<typeof CreatePassInput>;
 
@@ -77,7 +98,11 @@ export const StreeShaktiCheckInput = z
 export type StreeShaktiCheckInput = z.infer<typeof StreeShaktiCheckInput>;
 
 /** Reason codes the mock provider gives. The web maps each to plain words (freeTravel.reasons.*). */
-export const EligibilityReasonCode = z.enum(["CONSENT_REQUIRED", "CATEGORY_NOT_COVERED", "DOMICILE_REQUIRED"]);
+export const EligibilityReasonCode = z.enum([
+  "CONSENT_REQUIRED",
+  "CATEGORY_NOT_COVERED",
+  "DOMICILE_REQUIRED",
+]);
 export type EligibilityReasonCode = z.infer<typeof EligibilityReasonCode>;
 
 export const EligibilityCheckDto = z.object({

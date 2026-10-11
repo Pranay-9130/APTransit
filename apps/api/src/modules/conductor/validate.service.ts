@@ -61,6 +61,7 @@ export class ValidateService {
     let reason: ScanReason = typeof content === "string" ? content : "NOT_FOUND";
     let ticketId: string | null = null;
     let passId: string | null = null;
+    let childBoarded: { userId: string; passId: string; child: string } | null = null;
     let holderUserId: string | null = null;
     let earlierScanAt: string | undefined;
     let detail: ValidateTicketResult["ticket"];
@@ -111,6 +112,10 @@ export class ValidateService {
                   qrSecret: true,
                   passType: { select: { eligibleServiceTypes: true } },
                   user: { select: { name: true } },
+                  userId: true,
+                  zoneDistrictId: true,
+                  holderName: true,
+                  holderAge: true,
                   scans: {
                     where: { tripId: input.tripId, result: "VALID" },
                     orderBy: { scannedAt: "asc" },
@@ -154,9 +159,14 @@ export class ValidateService {
                   (payload.d !== formatIstDate(now) ||
                     formatIstDate(ticket.trip.serviceDate) !== formatIstDate(now)),
                 ),
+                // D-034: a zone pass is valid only on routes of its district
                 serviceEligible:
                   !pass ||
-                  pass.passType.eligibleServiceTypes.includes(assignment.bus.busType.serviceType),
+                  (pass.passType.eligibleServiceTypes.includes(
+                    assignment.bus.busType.serviceType,
+                  ) &&
+                    (!pass.zoneDistrictId ||
+                      pass.zoneDistrictId === assignment.trip.route.depot.districtId)),
               })
             : "STALE_CODE";
           if (reason === "OK") {
@@ -203,6 +213,8 @@ export class ValidateService {
               )?.scannedAt;
             if (scanned) earlierScanAt = scanned.toISOString();
           }
+          if (reason === "OK" && pass?.holderName && pass.holderAge !== null)
+            childBoarded = { userId: pass.userId, passId: pass.id, child: pass.holderName };
           if (reason === "OK")
             detail = ticket
               ? {
@@ -214,7 +226,7 @@ export class ValidateService {
                   type: ticket.type,
                 }
               : {
-                  passengerName: pass!.user.name ?? "",
+                  passengerName: pass!.holderName ?? pass!.user.name ?? "",
                   seatNo: null,
                   routeName: assignment.trip.route.nameEn,
                   boarding: "",
@@ -245,6 +257,15 @@ export class ValidateService {
       ...actor,
     });
     this.events.publish("conductor.scan", { tripId: input.tripId });
+    // Set inside the transaction callback, so TypeScript cannot see it change here.
+    const boarded = childBoarded as { userId: string; passId: string; child: string } | null;
+    if (boarded)
+      this.events.publish("pass.child_boarded", {
+        ...boarded,
+        routeEn: assignment.trip.route.nameEn,
+        routeTe: assignment.trip.route.nameTe,
+        at: now.toISOString(),
+      });
     if (holderUserId && ticketId)
       this.events.publish("ticket.status", {
         ticketId,

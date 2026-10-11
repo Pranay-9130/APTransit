@@ -164,7 +164,10 @@ export const AdminRefundInput = z
     tiers: z
       .array(
         z
-          .object({ minHoursBefore: z.number().nonnegative(), percent: z.number().int().min(0).max(100) })
+          .object({
+            minHoursBefore: z.number().nonnegative(),
+            percent: z.number().int().min(0).max(100),
+          })
           .strict(),
       )
       .min(1)
@@ -184,7 +187,10 @@ export const AdminRefundInput = z
     });
   });
 export type AdminRefundInput = z.infer<typeof AdminRefundInput>;
-export const AdminRefundDto = AdminRefundInput.safeExtend({ id: PublicId, isActive: z.boolean() }).strip();
+export const AdminRefundDto = AdminRefundInput.safeExtend({
+  id: PublicId,
+  isActive: z.boolean(),
+}).strip();
 export type AdminRefundDto = z.infer<typeof AdminRefundDto>;
 
 const positive = z.number().int().positive();
@@ -200,7 +206,7 @@ export const AdminSettingsInput = z
     "gift.cutoffMinutesBefore": z.number().int().nonnegative().optional(),
     "gift.maxTransfers": z.number().int().nonnegative().optional(),
     "pass.activateWithinDays": positive.optional(),
-    "qr.periodSec": z.literal(30).optional(),
+    "qr.periodSec": z.literal(3).optional(),
     "qr.windowSteps": z.literal(1).optional(),
   })
   .strict()

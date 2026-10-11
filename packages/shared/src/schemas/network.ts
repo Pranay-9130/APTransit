@@ -12,7 +12,12 @@ export const PLACES_SEARCH_DEFAULT_LIMIT = 10;
 
 export const PlacesSearchQuery = z.object({
   q: z.string().trim().min(2, "Type at least 2 characters").max(60),
-  limit: z.coerce.number().int().min(1).max(PLACES_SEARCH_MAX_LIMIT).default(PLACES_SEARCH_DEFAULT_LIMIT),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(PLACES_SEARCH_MAX_LIMIT)
+    .default(PLACES_SEARCH_DEFAULT_LIMIT),
 });
 export type PlacesSearchQuery = z.infer<typeof PlacesSearchQuery>;
 
@@ -24,8 +29,26 @@ export const PlaceDto = z.object({
   nameTe: z.string(),
   districtNameEn: z.string(),
   districtNameTe: z.string(),
+  /** D-034: coordinates for the map picker. */
+  lat: z.number().optional(),
+  lng: z.number().optional(),
 });
 export type PlaceDto = z.infer<typeof PlaceDto>;
+
+/** D-034: GET /places/nearby, stops closest to a point (the map and "use my location"). */
+export const PlacesNearbyQuery = z.object({
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+export type PlacesNearbyQuery = z.infer<typeof PlacesNearbyQuery>;
+export const NearbyPlaceDto = PlaceDto.extend({
+  lat: z.number(),
+  lng: z.number(),
+  distanceKm: z.number().nonnegative(),
+});
+export type NearbyPlaceDto = z.infer<typeof NearbyPlaceDto>;
+export const PlacesNearbyResponse = z.array(NearbyPlaceDto);
 export const PlacesSearchResponse = z.array(PlaceDto);
 
 export const DistrictDto = z.object({
