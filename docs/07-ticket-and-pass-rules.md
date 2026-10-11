@@ -18,7 +18,7 @@ These rules are implemented once, in `apps/api/src/modules/tickets/ticket-rules.
 | `gift.cutoffMinutesBefore` | 120 **(A)** | Gifting closes this long before departure |
 | `gift.maxTransfers` | 1 **(A)** | A ticket can be gifted once |
 | `pass.activateWithinDays` | 30 **(A)** | A bought pass must be activated within this time |
-| `qr.periodSec` | 30 | Rotating code period |
+| `qr.periodSec` | 3 (D-034, was 30) | Rotating code period. A screenshot or forwarded code dies within seconds |
 | `qr.windowSteps` | 1 | Accept previous, current and next period |
 
 ## 2. Ticket status machine
@@ -86,10 +86,10 @@ APT1.<base64url(payload)>.<base64url(ed25519 signature)>
 payload = { "t": "T" or "P", "i": "<ticket or pass id>", "tr": "<tripId or null>", "d": "<YYYY-MM-DD or null>", "v": <validUntil epoch sec>, "k": "<keyId>" }
 ```
 
-**Rotating code (client side, changes every 30 s)**
+**Rotating code (client side, changes every 3 s, D-034)**
 
 ```
-step = floor((Date.now() + serverOffsetMs) / 1000 / 30)
+step = floor((Date.now() + serverOffsetMs) / 1000 / 3)
 code = base32(HMAC_SHA256(rotSecret, step)).slice(0, 8)
 QR content = token + "~" + code
 ```
@@ -153,10 +153,26 @@ A ticket can be gifted only when **all** are true:
 
 On success, in one transaction: `holderUserId` becomes the recipient, passenger name becomes the recipient's profile name (or their masked phone or email when no name is set), `transferCount` plus 1, new `rotSecret`, a `ticket_transfers` row, an audit row, a `TICKET_RECEIVED` notification to the recipient, and a confirmation to the sender. The sender loses access immediately.
 
+## 7a. Single and group tickets (D-034)
+
+- A single ticket is one seat, one trip, boarding stop to dropping stop. A booking holds 1 to 6 passengers (group ticket).
+- Each passenger gives an age. Under `CHILD_MAX_AGE` (12) is a child and pays `CHILD_FARE_PERCENT` (50) of the adult ticket (fare plus reservation fee), rounded to the rupee. 12 and over is an adult.
+- Booking total = sum of passenger fares (`groupFare` in `packages/shared/src/fare.ts`). On confirmation the paid total is split over tickets by age (`splitGroupTotal`), so a child ticket refund is the child share.
+- The conductor may ask for proof of age. Free travel bookings stay at zero for everyone.
+
+## 7b. Search service fit (D-034)
+
+- A journey where the from or the to stop is a village stop (no bus stand) lists only village services (Pallevelugu, Ultra Pallevelugu, City Ordinary, Metro Express: `VILLAGE_SERVICE_TYPES`) when at least one exists that day. Kurnool to Orvakal shows village buses, not the Vijayawada express.
+- If no village service serves the pair, every service is shown (a village on an express only corridor still gets buses).
+- Bus stand to bus stand journeys are unchanged. Long journeys arriving the next day show the arrival as "06:15, next day".
+
 ## 8. Passes (plan sec 16 to 18, 102)
 
 | Pass type | Price **(A)** demo value | Duration | Valid on |
 | --- | --- | --- | --- |
+| Day pass | 150 rupees **(A)** | 1 day from activation | Same as weekly |
+| Zone day pass | 60 rupees **(A)** | 1 day from activation | Pallevelugu, Ultra Pallevelugu, City Ordinary, inside the one district picked at purchase |
+| Zone monthly pass | 900 rupees **(A)** | 30 days from activation | Same as zone day pass |
 | Weekly | 450 rupees | 7 days from activation | Pallevelugu, Ultra Pallevelugu, City Ordinary, Metro Express, Express |
 | Monthly | 1,600 rupees | 30 days from activation | Same as weekly |
 | Free travel (Stree Shakti) | 0 | Until the eligibility check expires (365 days **(A)**) | Pallevelugu, Ultra Pallevelugu, City Ordinary, Metro Express, Express |
@@ -178,6 +194,8 @@ stateDiagram-v2
 - Countdown on screen: "5 days 08 hours 21 minutes" (sec 16). Under 24 hours: "08 hours 21 minutes 09 seconds" updating every second. Updates on its own, no refresh.
 - One active pass per kind per user.
 - Passes are never giftable.
+- Zone passes (D-034): `pass_types.zoneScoped`; the buyer picks a district (`passes.zoneDistrictId`). A scan on a route whose depot is in another district returns `SERVICE_NOT_ELIGIBLE`.
+- Child cards (D-034): a parent buys any paid pass for a child under 18 (`holderName`, `holderAge`). The conductor sees the child name. Each VALID scan sends `CHILD_BOARDED` (in app and email) to the parent with route and time. One active pass per kind per holder, so one parent can hold cards for several children.
 - A pass can be scanned once per trip. Unlimited trips while ACTIVE.
 - `PASS_EXPIRING` notification 24 hours before `validUntil`.
 

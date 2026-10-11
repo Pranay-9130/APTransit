@@ -26,7 +26,7 @@
 | TicketStatus | BOOKED, ACTIVE, SCANNED, USED, CANCELLED, REFUNDED, EXPIRED |
 | PaymentStatus | CREATED, CAPTURED, FAILED, REFUNDED, PARTIALLY_REFUNDED |
 | RefundStatus | PENDING, PROCESSED, FAILED |
-| PassKind | WEEKLY, MONTHLY, FREE_TRAVEL |
+| PassKind | DAILY (D-034), WEEKLY, MONTHLY, FREE_TRAVEL |
 | PassStatus | PENDING_PAYMENT, READY, ACTIVE, EXPIRED, CANCELLED |
 | ScanResult | VALID, INVALID |
 | ScanReason | OK, NOT_FOUND, BAD_SIGNATURE, STALE_CODE, NOT_ACTIVATED, ALREADY_SCANNED, EXPIRED, CANCELLED, WRONG_TRIP, WRONG_DATE, SERVICE_NOT_ELIGIBLE |
@@ -35,7 +35,7 @@
 | Severity | LOW, MEDIUM, HIGH, CRITICAL |
 | FeedbackCategory | DELAY, CLEANLINESS, STAFF, TICKET, SAFETY, OVERCROWDING, OTHER |
 | ComplaintStatus | RECEIVED, IN_REVIEW, RESOLVED, CLOSED |
-| NotificationType | BOOKING_CONFIRMED, TICKET_ACTIVATED, TICKET_RECEIVED, TRIP_DEPARTED, TRIP_DELAYED, BUS_NEAR_STOP, TRIP_CANCELLED, REPLACEMENT_BUS, ROUTE_UPDATE, PASS_EXPIRING, COMPLAINT_UPDATE |
+| NotificationType | BOOKING_CONFIRMED, TICKET_ACTIVATED, TICKET_RECEIVED, TRIP_DEPARTED, TRIP_DELAYED, BUS_NEAR_STOP, TRIP_CANCELLED, REPLACEMENT_BUS, ROUTE_UPDATE, PASS_EXPIRING, COMPLAINT_UPDATE, CHILD_BOARDED (D-034) |
 | EligibilityScheme | STREE_SHAKTI |
 | EligibilityResult | ELIGIBLE, NOT_ELIGIBLE |
 | OtpChannel | EMAIL, PHONE |
@@ -98,8 +98,8 @@
 
 | Table | Fields | Notes |
 | --- | --- | --- |
-| pass_types | id, kind, nameEn, nameTe, durationDays, pricePaise, eligibleServiceTypes (ServiceType[]), scheme?, isActive | FREE_TRAVEL has pricePaise 0 and scheme STREE_SHAKTI |
-| passes | id, code, userId, passTypeId, status, activatedAt?, validFrom?, validUntil?, eligibilityCheckId?, paymentId?, qrSecret (encrypted), createdAt | Never giftable |
+| pass_types | id, kind, nameEn, nameTe, durationDays, pricePaise, eligibleServiceTypes (ServiceType[]), scheme?, zoneScoped (D-034), isActive | FREE_TRAVEL has pricePaise 0 and scheme STREE_SHAKTI. zoneScoped passes are valid in one district |
+| passes | id, code, userId, passTypeId, status, activatedAt?, validFrom?, validUntil?, eligibilityCheckId?, paymentId?, qrSecret (encrypted), zoneDistrictId?, holderName?, holderAge? (D-034), createdAt | Never giftable. holderName and holderAge make a child card: the owner (parent) gets CHILD_BOARDED on each valid scan. Migration 20261011000000_v3_passes_children |
 | eligibility_checks | id, userId, scheme, provider, result, reasonCode?, providerRef, checkedAt, expiresAt | Stores the **result only**. No Aadhaar number, no document image (sec 51) |
 | payments | id, bookingId?, passId?, provider (`RAZORPAY`), providerOrderId (unique), providerPaymentId? (unique), amountPaise, status, capturedAt?, raw (JSON, redacted), createdAt | Exactly one of bookingId or passId |
 | refunds | id, paymentId, ticketId?, amountPaise, status, providerRefundId?, policyId, reason, createdAt, processedAt? | |

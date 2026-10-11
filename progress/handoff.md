@@ -14,7 +14,28 @@ Read order for a new session:
 
 ---
 
-## Current state (Days 15 to 20 code done and tested, 2026-10-08)
+## Current state (v3 owner feedback round, 2026-10-11)
+
+Branch `a/v3-transit-ux` (from `a/minimal-ui`), not committed yet. D-034 and D-035 in the decisions log; docs 02, 05, 06, 07, 09, 11, 12, 15, 18, 19 updated.
+
+| New | Where |
+| --- | --- |
+| Light blue tokens, splash utilities, `h-home-map` | `packages/ui/src/tokens.css` |
+| Bus splash (root layout) | `apps/web/components/bus-splash.tsx` |
+| Login first (`/` protected) | `apps/web/proxy.ts` |
+| Map picker home | `apps/web/app/(citizen)/map-picker.tsx`, `GET /places/nearby` |
+| Google sign in | `apps/web/components/google-sign-in.tsx`, `POST /auth/google`, env `GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` |
+| Village service fit | `villageFit` in `apps/api/src/modules/network/network.service.ts` |
+| Child fares | `groupFare`, `splitGroupTotal` in `packages/shared/src/fare.ts` |
+| Zone and child passes, CHILD_BOARDED | passes service, `validate.service.ts`, notifications subscriber, migration `20261011000000_v3_passes_children` |
+| QR 3 s | `QR_PERIOD_SEC` in `packages/shared/src/qr.ts`, seed setting |
+| Stage counts | `OpsService.tripProfile`, ops trip page |
+| Terms | `apps/web/app/(citizen)/terms/page.tsx` |
+
+New gotchas: Python on Windows writes CRLF (breaks `tokens.test.ts` parsing): write with `newline="
+"`. Headless Chromium does not paint MapLibre tiles. PGlite 0.0.20 crashes during seed; `@electric-sql/pglite-socket@latest --max-connections=1` works.
+
+## Previous state (Days 15 to 20 code done and tested, 2026-10-08)
 
 ### Git
 

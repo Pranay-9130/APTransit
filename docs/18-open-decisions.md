@@ -35,6 +35,17 @@
 | T8 | Offline checking | Stretch goal: signature and expiry check offline, sync scans later, first scan wins |
 | T9 | Pass validity | 7 or 30 days from activation, activate within 30 days of purchase |
 
+## v3 values to confirm (D-034, assumptions)
+
+| Item | Value used | Confirm with |
+| --- | --- | --- |
+| Child age and fare | Under 12 pays 50 percent of the adult ticket | APSRTC concession rules |
+| Day pass price | 150 rupees, statewide ordinary to express | Transport authority |
+| Zone day and monthly pass | 60 and 900 rupees, one district, village and city ordinary services | Transport authority |
+| Child card age limit | Under 18 | Product owner |
+| QR period | 3 s with one step either side | Field test on low end phones and slow scanners |
+| Service fit | Village stop shows village services when any exist | Depot managers |
+
 ## Product conflicts we resolved (flag to product owner)
 
 | # | Conflict in the plan | Resolution |

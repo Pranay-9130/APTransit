@@ -717,3 +717,21 @@ Severity: **S1** blocks the demo (fix today), **S2** wrong behaviour (fix this w
 
 **Decisions needed (also added to decisions-log.md)**
 - D-007. Review at the sync.
+
+## v3 (2026-10-11): owner feedback round, branch a/v3-transit-ux
+
+**Done**
+- Light blue and white theme, bus opening animation, login first, Google sign in (D-035), terms page, account links.
+- Home with From and To plus map picker and nearby stops (`GET /places/nearby`).
+- Village journeys show village buses (Kurnool to Orvakal: Pallevelugu and Ultra Pallevelugu only, checked against the seeded API).
+- Group tickets with child half fare, day and zone passes, child cards with CHILD_BOARDED, QR every 3 s, passengers per stage on the ops trip page, overnight Vijayawada to Visakhapatnam route.
+
+**Checks**
+- API 423 passed (6 skipped), shared 122, ui 106, web 44, typecheck, lint, i18n, dashes, endpoints, classes, `next build`.
+- Local smoke on PGlite plus dev Redis: migrate, seed, login, home, passes buy, terms (Playwright screenshots).
+
+**Not done**
+- Map tiles not checked in a real browser (headless has no GPU). Native Telugu review of the new strings. E2E suite not rerun in full. Pass scans have no stop, so per stage counts cover tickets only.
+
+**Decisions:** D-034, D-035.
+

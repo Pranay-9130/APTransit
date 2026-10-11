@@ -45,6 +45,7 @@ Auth column: `public`, `user` (any logged in), or role names from [08](08-roles-
 | GET | /health | public | | `{ status, db, redis, version, time }`. HTTP 200 when db and redis are ok, 503 when degraded (decision D-006) | 1 |
 | POST | /auth/otp/request | public | `{ channel: EMAIL or PHONE, target }` | 202 `{ expiresInSec: 300, resendInSec: 30 }`. Dev only: `devCode` when `OTP_DEV_ECHO=1` | 3 |
 | POST | /auth/otp/verify | public | `{ channel, target, code }` | `{ accessToken, user: MeDto }` + sets `apt_rt` | 3 |
+| POST | /auth/google | public, 10 per IP per minute | `{ credential }` (Google ID token) | `{ accessToken, user: MeDto }` + sets `apt_rt`. 403 when `GOOGLE_CLIENT_ID` is unset, 401 when Google rejects the token (D-035) | v3 |
 | POST | /auth/refresh | cookie | | `{ accessToken }` + rotates `apt_rt` | 3 |
 | POST | /auth/logout | cookie | | 204, revokes token family | 3 |
 | GET | /me | user | | `MeDto { id, name, email, phone (masked), preferredLocale, roles: [{ role, depotId, districtId }] }` | 3 |
@@ -54,7 +55,8 @@ Auth column: `public`, `user` (any logged in), or role names from [08](08-roles-
 
 | Method | Path | Query | Returns | Day |
 | --- | --- | --- | --- | --- |
-| GET | /places/search | `q` (min 2 chars), `limit` | `[{ id, kind: STOP or BUS_STAND, nameEn, nameTe, districtNameEn, districtNameTe }]` | 4 |
+| GET | /places/search | `q` (min 2 chars), `limit` | `[{ id, kind: STOP or BUS_STAND, nameEn, nameTe, districtNameEn, districtNameTe, lat?, lng? }]` | 4 |
+| GET | /places/nearby | `lat`, `lng`, `limit` (1 to 50, default 20) | `[{ ...place, lat, lng, distanceKm }]` closest first (map picker, D-034) | v3 |
 | GET | /districts | | `[{ id, code, nameEn, nameTe, busStandCount }]` | 4 |
 | GET | /districts/:id/bus-stands | | `[{ id, nameEn, nameTe, routeCount }]` | 4 |
 | GET | /bus-stands/:id/routes | | `[{ id, code, nameEn, nameTe, destination, serviceTypes[] }]` | 4 |
@@ -219,3 +221,10 @@ Authenticated sockets auto join `user:<userId>`.
 | `kpi:update` | depot, state | `{ scope, values }` every 15 s |
 
 Throttle: at most one `bus:position` per trip per 2 s per room.
+
+## v3 additive fields (D-034)
+
+- `PassTypeDto.zoneScoped`, `PassDto.zoneDistrictId`, `PassDto.holderName`, `PassDto.holderAge`. `POST /passes` body adds `zoneDistrictId?` (required for zone pass types) and `child?: { name, age }` (age 1 to 17).
+- `GET /ops/trips/:id` adds `stages: [{ stopId, seq, nameEn, nameTe, booked, boarded, alighting }]` and `passBoardings` (pass scans have no stop).
+- Notification type `CHILD_BOARDED` with params `child`, `routeEn`, `routeTe`, `departureAt`.
+- Search applies the service fit rule in docs/07 section 7b.
