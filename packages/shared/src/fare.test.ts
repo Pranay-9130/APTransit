@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { calculateFare, DEFAULT_REFUND_TIERS, type FareRuleInput, refundQuote } from "./fare";
+import {
+  calculateFare,
+  DEFAULT_REFUND_TIERS,
+  type FareRuleInput,
+  groupFare,
+  passengerFarePaise,
+  refundQuote,
+  splitGroupTotal,
+} from "./fare";
 
 // Demo fare rules from docs/19 (base fare 0, fare is per km with a minimum).
 const EXPRESS: FareRuleInput = {
@@ -200,8 +208,7 @@ describe("refundQuote", () => {
 });
 
 describe("group fares (D-042)", () => {
-  it("charges children half, rounded to the rupee", async () => {
-    const { groupFare, passengerFarePaise, splitGroupTotal } = await import("./fare");
+  it("charges children half, rounded to the rupee", () => {
     expect(passengerFarePaise(15_100, 30)).toBe(15_100);
     expect(passengerFarePaise(15_100, 8)).toBe(7_600);
     const g = groupFare(15_100, [35, 33, 8, 4]);
