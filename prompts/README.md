@@ -1,5 +1,7 @@
 # Prompts
 
+> **Next work: v3.** The owner feedback round is merged on `main` (PR #9). Start with [v3/README.md](v3/README.md): full context, four phase prompts and the human only tasks.
+
 One file per day, `day-01.md` to `day-20.md`. Each file has a prompt for **Dev A (frontend)** and one for **Dev B (backend)**, a sync point, and a "Done when" checklist.
 
 ## How to run a day
@@ -49,3 +51,10 @@ About 8 focused hours per dev per day. Tasks inside each prompt are ordered by i
 | [18](day-18.md) | Polish | Telugu, accessibility, responsive, dark mode | Observability, backups, retention |
 | [19](day-19.md) | Release | Both: full e2e, bug bash, performance | Both |
 | [20](day-20.md) | Demo | Both: demo, handover, backlog | Both |
+
+## After Day 20
+
+| Round | Files |
+| --- | --- |
+| v2 journey plan | [v2-journey-plan.md](v2-journey-plan.md), [v2-design-spec.md](v2-design-spec.md) |
+| v3 owner feedback | [v3/README.md](v3/README.md) (context, phases 1 to 4, human tasks) |

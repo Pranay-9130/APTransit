@@ -16,7 +16,7 @@ Read order for a new session:
 
 ## Current state (v3 owner feedback round, 2026-10-11)
 
-Branch `a/v3-transit-ux`, merged with upstream main (states, boarding record, pass catalog) on 2026-10-11. My zone passes use the upstream `DAY` and `MONTHLY` kinds; my DAILY kind was dropped. D-042 and D-043 in the decisions log; docs 02, 05, 06, 07, 09, 11, 12, 15, 18, 19 updated.
+v3 is merged on `main` (PR #9). Decisions D-042 (citizen features) and D-043 (Sign in with Google). **Next work: `prompts/v3/README.md`**: full context in `prompts/v3/00-context.md`, four phase prompts (tests, checks and fixes), and `prompts/v3/human-tasks.md` (Google OAuth client, real browser map check, QR phone test, owner sign off of the assumed values, Telugu and screen reader review).
 
 | New | Where |
 | --- | --- |
