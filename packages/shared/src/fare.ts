@@ -150,7 +150,7 @@ export function refundQuote({
   return { cancellable: true, percent: tier.percent, amountPaise, feePaise };
 }
 
-// Group tickets (D-034): a passenger under CHILD_MAX_AGE pays CHILD_FARE_PERCENT of the adult fare.
+// Group tickets (D-042): a passenger under CHILD_MAX_AGE pays CHILD_FARE_PERCENT of the adult fare.
 
 /** Passengers younger than this are children. */
 export const CHILD_MAX_AGE = 12;

@@ -489,7 +489,7 @@ describe("Auth endpoints and lifecycle", () => {
     expect(res.headers["x-ratelimit-limit"]).toBe("120");
   });
 
-  it("POST /auth/google validates the body and answers 403 when Google is not set up (D-035)", async () => {
+  it("POST /auth/google validates the body and answers 403 when Google is not set up (D-043)", async () => {
     const bad = await request(app.getHttpServer()).post("/api/v1/auth/google").send({});
     expect(bad.status).toBe(400);
     const off = await request(app.getHttpServer())

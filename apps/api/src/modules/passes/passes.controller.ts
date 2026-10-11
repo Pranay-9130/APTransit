@@ -44,10 +44,7 @@ export class PassesController {
     @Body(new ZodValidationPipe(CreatePassInput)) body: CreatePassInput,
     @Req() req: Request & { user?: AuthenticatedUser },
   ): Promise<PassDto> {
-    return this.passes.create(user.id, body.passTypeId, auditActorFromRequest(req), new Date(), {
-      zoneDistrictId: body.zoneDistrictId,
-      child: body.child,
-    });
+    return this.passes.create(user.id, body, auditActorFromRequest(req));
   }
 
   @Post(":id/activate")

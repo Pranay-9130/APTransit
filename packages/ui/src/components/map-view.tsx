@@ -28,12 +28,20 @@ const themeRead = () => {
     .map((k) => css.getPropertyValue(k).trim())
     .join("|");
 };
+/** [minLng, minLat, maxLng, maxLat] of a state (GET /states, D-034). */
+export type MapBounds = [number, number, number, number];
+
+/** Used only until the state arrives from the API: the first state (Andhra Pradesh). */
+export const DEFAULT_MAP_BOUNDS: MapBounds = [76.7, 12.6, 84.8, 19.95];
+
+const centerOf = (b: MapBounds) => ({ lng: (b[0] + b[2]) / 2, lat: (b[1] + b[3]) / 2 });
+
 export interface MapMarker {
   id: string;
   lat: number;
   lng: number;
   label: string;
-  /** D-034 map picker: from and to pins stand out, other stops are small dots. */
+  /** D-042 map picker: from and to pins stand out, other stops are small dots. */
   tone?: "from" | "to" | "stop";
 }
 
@@ -46,12 +54,14 @@ export interface MapViewProps {
   markers?: MapMarker[];
   center?: { lat: number; lng: number };
   zoom?: number;
+  /** The state to show when there is no center, route or markers. */
+  bounds?: MapBounds;
   fitBounds?: boolean;
   mapStyle?: string;
   recenterLabel?: string;
   errorLabel?: string;
   retryLabel?: string;
-  /** D-034: makes markers tappable (the map picker). Keep a keyboard list next to the map too: the map is hidden from screen readers. */
+  /** D-042: makes markers tappable (the map picker). Keep a keyboard list next to the map too: the map is hidden from screen readers. */
   onMarkerClick?: (id: string) => void;
   className?: string;
 }
@@ -65,6 +75,7 @@ export function MapView({
   markers = [],
   center,
   zoom,
+  bounds = DEFAULT_MAP_BOUNDS,
   fitBounds: shouldFit = true,
   mapStyle = "https://tiles.openfreemap.org/styles/liberty",
   recenterLabel,
@@ -107,7 +118,7 @@ export function MapView({
   const split =
     a && b
       ? [a[0]! + (b[0]! - a[0]!) * fraction, a[1]! + (b[1]! - a[1]!) * fraction]
-      : (coords[0] ?? [center?.lng ?? 78, center?.lat ?? 16]);
+      : (coords[0] ?? [center?.lng ?? centerOf(bounds).lng, center?.lat ?? centerOf(bounds).lat]);
   const line = (points: number[][]) => ({
     type: "Feature" as const,
     properties: {},
@@ -148,7 +159,7 @@ export function MapView({
           initialViewState={
             center
               ? { longitude: center.lng, latitude: center.lat, zoom: zoom ?? 12 }
-              : { bounds: [76.7, 12.6, 84.8, 19.95] }
+              : { bounds }
           }
           attributionControl={{ compact: false }}
           keyboard={false}
@@ -289,8 +300,10 @@ export interface OpsMapProps {
   };
   statusLabel: (status: LiveBusDto["displayStatus"]) => string;
   details: { tripId: string; route: string; driver: string | null }[];
+  /** The state shown before any bus has a position. */
+  bounds?: MapBounds;
 }
-export function OpsMap({ buses, mapStyle, labels, statusLabel, details }: OpsMapProps) {
+export function OpsMap({ buses, mapStyle, labels, statusLabel, details, bounds = DEFAULT_MAP_BOUNDS }: OpsMapProps) {
   const [selected, setSelected] = useState<string | null>(null),
     [failed, setFailed] = useState(false),
     [attempt, setAttempt] = useState(0);
@@ -316,12 +329,8 @@ export function OpsMap({ buses, mapStyle, labels, statusLabel, details }: OpsMap
   return (
     <section className="relative h-tracking-map overflow-hidden rounded-lg border border-default bg-surface">
       <Map
-        key={attempt}
-        initialViewState={{
-          latitude: buses[0]?.lat ?? 15.8,
-          longitude: buses[0]?.lng ?? 78.2,
-          zoom: 7,
-        }}
+        key={`${attempt}:${bounds.join(",")}`}
+        initialViewState={buses[0] ? { latitude: buses[0].lat, longitude: buses[0].lng, zoom: 7 } : { bounds }}
         mapStyle={mapStyle}
         onError={() => setFailed(true)}
         attributionControl={{ compact: true }}
@@ -403,6 +412,8 @@ export interface GovMapProps {
   mapStyle: string;
   /** Zooms to these districts (drill down); the whole state when not given. */
   focus?: { lat: number; lng: number; zoom: number };
+  /** The state (or states) to show when there is no focus. */
+  bounds?: MapBounds;
   onDistrict?: (id: string) => void;
   labels: { error: string; retry: string; legend: string };
 }
@@ -414,15 +425,7 @@ export interface GovMapProps {
  * get their own icon. Markers are pointer shortcuts; the district list next to the map is the keyboard
  * and screen reader route (pass onDistrict and render that list).
  */
-export function GovMap({
-  districts,
-  buses,
-  incidents,
-  mapStyle,
-  focus,
-  onDistrict,
-  labels,
-}: GovMapProps) {
+export function GovMap({ districts, buses, incidents, mapStyle, focus, bounds = DEFAULT_MAP_BOUNDS, onDistrict, labels }: GovMapProps) {
   const [failed, setFailed] = useState(false),
     [attempt, setAttempt] = useState(0);
   const colors = useSyncExternalStore(themeSubscribe, toneRead, () => "||||||").split("|");
@@ -463,12 +466,10 @@ export function GovMap({
       className="relative h-tracking-map overflow-hidden rounded-lg border border-default bg-surface"
     >
       <Map
-        key={attempt}
+        key={`${attempt}:${bounds.join(",")}`}
         mapStyle={mapStyle}
         initialViewState={
-          focus
-            ? { latitude: focus.lat, longitude: focus.lng, zoom: focus.zoom }
-            : { bounds: [76.7, 12.6, 84.8, 19.95] }
+          focus ? { latitude: focus.lat, longitude: focus.lng, zoom: focus.zoom } : { bounds }
         }
         attributionControl={{ compact: true }}
         onError={() => setFailed(true)}

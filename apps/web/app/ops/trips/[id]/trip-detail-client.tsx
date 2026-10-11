@@ -282,7 +282,7 @@ export default function TripDetailClient({ id }: { id: string }) {
         </Card>
       </div>
 
-      {/* D-034: how many board and get off at each stage (stop) */}
+      {/* D-042: how many board and get off at each stage (stop) */}
       {trip.stages && trip.stages.length > 0 ? (
         <Card className="flex flex-col gap-3 p-4">
           <h2 className="text-h2 text-fg">{t("stages.title")}</h2>

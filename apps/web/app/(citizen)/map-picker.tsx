@@ -18,7 +18,7 @@ const MapView = dynamic(() => import("@aptransit/ui/map-view"), {
 const AP_CENTRE = { lat: 15.9, lng: 79.7 };
 
 /**
- * D-034 map picker (Google Maps style): every stop is a dot on the map. Tap one, then choose
+ * D-042 map picker (Google Maps style): every stop is a dot on the map. Tap one, then choose
  * "Set as from" or "Set as to". "Use my location" picks the nearest stop as From. The map is hidden
  * from screen readers, so the same stops are listed below as buttons.
  */

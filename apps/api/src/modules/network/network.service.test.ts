@@ -176,7 +176,7 @@ describe("medianGapMinutes", () => {
   });
 });
 
-describe("villageFit (D-034)", () => {
+describe("villageFit (D-042)", () => {
   const row = (serviceType: string, villageEnd: boolean) => ({ serviceType, villageEnd }) as never;
   it("keeps only village buses for a village journey when there are any", () => {
     const rows = [row("EXPRESS", true), row("PALLEVELUGU", true)];

@@ -2,6 +2,7 @@ import type {
   BusStandDto,
   BusStandRouteDto,
   DistrictDto,
+  StateDto,
   FareRuleInput,
   RouteDto,
   ServiceType,
@@ -41,7 +42,7 @@ export interface TripRow {
   toKm: number;
   /** Fare rule valid on the service date, null when none exists (the trip is not sold). */
   fare: FareRuleInput | null;
-  /** D-034: the from or the to stop is a village stop (no bus stand). */
+  /** D-042: the from or the to stop is a village stop (no bus stand). */
   villageEnd?: boolean;
 }
 
@@ -115,7 +116,7 @@ export class NetworkRepository {
     }));
   }
 
-  /** D-034: every stop with coordinates (a few hundred rows; the service caches it). */
+  /** D-042: every stop with coordinates (a few hundred rows; the service caches it). */
   async allStops(): Promise<Required<StopSearchRow>[]> {
     const rows = await this.prisma.stop.findMany({
       select: {
@@ -140,15 +141,23 @@ export class NetworkRepository {
     }));
   }
 
+  /** Active states by code. Bounds are [minLng, minLat, maxLng, maxLat]. */
+  async states(): Promise<StateDto[]> {
+    const rows = await this.prisma.state.findMany({ where: { isActive: true }, orderBy: [{ code: "asc" }] });
+    return rows.map((s) => ({
+      id: s.id,
+      code: s.code,
+      nameEn: s.nameEn,
+      nameTe: s.nameTe,
+      center: { lat: s.centerLat, lng: s.centerLng },
+      bounds: [s.minLng, s.minLat, s.maxLng, s.maxLat],
+      zoom: s.defaultZoom,
+    }));
+  }
+
   async districts(): Promise<DistrictDto[]> {
     const rows = await this.prisma.district.findMany({
-      select: {
-        id: true,
-        code: true,
-        nameEn: true,
-        nameTe: true,
-        _count: { select: { busStands: true } },
-      },
+      select: { id: true, code: true, nameEn: true, nameTe: true, stateId: true, _count: { select: { busStands: true } } },
       orderBy: { nameEn: "asc" },
     });
     return rows.map((d) => ({
@@ -156,6 +165,7 @@ export class NetworkRepository {
       code: d.code,
       nameEn: d.nameEn,
       nameTe: d.nameTe,
+      stateId: d.stateId,
       busStandCount: d._count.busStands,
     }));
   }

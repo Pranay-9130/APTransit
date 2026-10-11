@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 /**
- * D-034: the opening animation. A bus drives across a road, then the layer fades away by itself.
+ * D-042: the opening animation. A bus drives across a road, then the layer fades away by itself.
  * Pure CSS (server rendered), so it shows on the first paint without JavaScript and never blocks
  * clicks. Hidden from screen readers; reduced motion shortens it to a short fade.
  */

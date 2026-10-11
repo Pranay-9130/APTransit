@@ -111,7 +111,7 @@ export class AuthController {
     };
   }
 
-  /** D-035: Sign in with Google (ID token from Google Identity Services). 10 per IP per minute. */
+  /** D-043: Sign in with Google (ID token from Google Identity Services). 10 per IP per minute. */
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("auth/google")

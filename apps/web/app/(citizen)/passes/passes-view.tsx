@@ -259,10 +259,23 @@ function ActivePassCard({ pass }: { pass: PassDto }) {
         )}
         <p className="text-center text-small text-muted">{t("passes.showOnBoard")}</p>
       </div>
-      <p className="text-small text-muted">
-        {t("passes.services", { services: serviceList(pass.eligibleServiceTypes, t, locale) })}
-      </p>
+      <p className="text-small text-muted">{t("passes.services", { services: serviceList(pass.eligibleServiceTypes, t, locale) })}</p>
+      <PassScope pass={pass} />
     </article>
+  );
+}
+
+/** D-036: who and where a pass covers (family group size, school route). Nothing for a plain pass. */
+function PassScope({ pass }: { pass: PassDto }) {
+  const { t, pick } = usePassText();
+  if (pass.groupSize <= 1 && !pass.homeStop) return null;
+  return (
+    <>
+      {pass.groupSize > 1 && <p className="text-small text-fg">{t("passes.covers", { count: pass.groupSize })}</p>}
+      {pass.homeStop && pass.destStop && (
+        <p className="text-small text-fg">{t("passes.route", { from: pick(pass.homeStop), to: pick(pass.destStop) })}</p>
+      )}
+    </>
   );
 }
 
@@ -292,9 +305,8 @@ function WaitingPassCard({ pass, blocked }: { pass: PassDto; blocked: boolean })
         ) : null}
         <StatusChip pass={pass} />
       </div>
-      <p className="text-small text-muted">
-        {t("passes.services", { services: serviceList(pass.eligibleServiceTypes, t, locale) })}
-      </p>
+      <p className="text-small text-muted">{t("passes.services", { services: serviceList(pass.eligibleServiceTypes, t, locale) })}</p>
+      <PassScope pass={pass} />
 
       {pass.status === "READY" ? (
         <>

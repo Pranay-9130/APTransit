@@ -19,7 +19,7 @@ const SECTIONS = [
   "account",
 ] as const;
 
-/** D-034: terms and conditions, public (linked from login and account). Plain language, both languages. */
+/** D-042: terms and conditions, public (linked from login and account). Plain language, both languages. */
 export default async function TermsPage() {
   const t = await getTranslations("terms");
   return (

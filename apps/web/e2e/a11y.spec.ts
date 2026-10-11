@@ -17,7 +17,7 @@ async function expectNoSeriousViolations(page: Page, name: string) {
 test.describe("Accessibility (axe)", () => {
   test("home, search and bus details", async ({ page }) => {
     test.setTimeout(90_000);
-    // D-034: home needs login first
+    // D-042: home needs login first
     await login(page, uniqueEmail("home"));
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

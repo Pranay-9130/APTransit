@@ -13,7 +13,7 @@ export interface DomainEvents {
   "notification.created": { userId: string; notification: NotificationDto };
   "booking.confirmed": { bookingId: string; userId: string; tripId: string; ticketIds: string[] };
   /** Every ticket status change (docs/07 section 2). Sockets emit ticket:status from this on Day 12. */
-  /** D-034: a child card was scanned; the parent (pass owner) is told. */
+  /** D-042: a child card was scanned; the parent (pass owner) is told. */
   "pass.child_boarded": {
     userId: string;
     passId: string;
@@ -47,6 +47,8 @@ export interface LiveRooms {
   routeId: string;
   depotId: string;
   districtId: string;
+  /** Room state:{id} (D-034). */
+  stateId: string;
 }
 
 export type DomainEventName = keyof DomainEvents;

@@ -29,13 +29,13 @@ export const PlaceDto = z.object({
   nameTe: z.string(),
   districtNameEn: z.string(),
   districtNameTe: z.string(),
-  /** D-034: coordinates for the map picker. */
+  /** D-042: coordinates for the map picker. */
   lat: z.number().optional(),
   lng: z.number().optional(),
 });
 export type PlaceDto = z.infer<typeof PlaceDto>;
 
-/** D-034: GET /places/nearby, stops closest to a point (the map and "use my location"). */
+/** D-042: GET /places/nearby, stops closest to a point (the map and "use my location"). */
 export const PlacesNearbyQuery = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
@@ -51,11 +51,25 @@ export type NearbyPlaceDto = z.infer<typeof NearbyPlaceDto>;
 export const PlacesNearbyResponse = z.array(NearbyPlaceDto);
 export const PlacesSearchResponse = z.array(PlaceDto);
 
+/** GET /states (D-034): a state with its map view. Bounds are [minLng, minLat, maxLng, maxLat]. */
+export const StateDto = z.object({
+  id: z.string(),
+  code: z.string(),
+  nameEn: z.string(),
+  nameTe: z.string(),
+  center: z.object({ lat: z.number(), lng: z.number() }),
+  bounds: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  zoom: z.number().int(),
+});
+export type StateDto = z.infer<typeof StateDto>;
+export const StatesResponse = z.array(StateDto);
+
 export const DistrictDto = z.object({
   id: z.string(),
   code: z.string(),
   nameEn: z.string(),
   nameTe: z.string(),
+  stateId: z.string(),
   busStandCount: z.number().int().nonnegative(),
 });
 export type DistrictDto = z.infer<typeof DistrictDto>;

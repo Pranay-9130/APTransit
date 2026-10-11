@@ -25,7 +25,7 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System",
-    "appDescription": "One connected public transport platform for Andhra Pradesh.",
+    "appDescription": "One connected public transport platform.",
     "useLightTheme": "Use light theme",
     "useDarkTheme": "Use dark theme",
     "notSelected": "Not selected",
@@ -249,7 +249,11 @@
       "STALE_CODE": "INVALID: old QR code",
       "BAD_SIGNATURE": "INVALID: not recognised",
       "NOT_FOUND": "INVALID: not recognised",
-      "SERVICE_NOT_ELIGIBLE": "INVALID: not valid on this bus"
+      "SERVICE_NOT_ELIGIBLE": "INVALID: not valid on this bus",
+      "PAST_DESTINATION": "INVALID: past destination",
+      "BEFORE_BOARDING_STOP": "INVALID: before boarding stop",
+      "NOT_YET_VALID": "INVALID: not valid yet",
+      "ROUTE_NOT_COVERED": "INVALID: route not covered"
     }
   },
   "auth": {
@@ -323,6 +327,7 @@
     "BUS_NOT_AVAILABLE": "Selected bus is not available.",
     "COMPLAINT_STATUS_INVALID": "This status change is not allowed. Move the complaint one step at a time.",
     "NETWORK": "You are offline. Your tickets still open. We will retry when you are back online.",
+    "EMAIL_DELIVERY_FAILED": "We could not send the code by email. Try again in a few minutes.",
     "INTERNAL": "Something went wrong on our side. Try again in a moment.",
     "BAD_RESPONSE": "We got an answer we did not understand. Try again in a moment."
   },
@@ -666,6 +671,8 @@
       "EXPIRED": "Expired",
       "CANCELLED": "Cancelled"
     },
+    "covers": "Covers up to {count} people on the same bus",
+    "route": "{from} to {to}",
     "childCard": "Child card for {name}, age {age}"
   },
   "passBuy": {
@@ -682,6 +689,23 @@
     "freeHint": "For women, girls and transgender persons who live in Andhra Pradesh.",
     "freeCta": "Check eligibility",
     "errorTitle": "Passes could not load",
+    "demoPrice": "Demo price",
+    "demoNote": "Prices marked Demo price are placeholders until the transport department confirms them.",
+    "validityDay": "Until midnight on the day you activate it",
+    "covers": "Covers up to {count} people on the same bus",
+    "buy": "Buy for {amount}",
+    "buyLabel": "Buy {name} for {amount}",
+    "schoolCta": "Check eligibility and buy",
+    "forWho": {
+      "DAY": "For a day of trips, as many as you need.",
+      "WEEKLY": "For daily travel through the week.",
+      "MONTHLY": "For regular commuters.",
+      "FAMILY": "For a family travelling together.",
+      "SCHOOL": "For students, between home and school or college.",
+      "ANNUAL": "For a whole year of travel."
+    },
+    "emptyTitle": "No passes are on sale right now.",
+    "emptyHint": "Check again later, or travel with a single ticket.",
     "zoneRequired": "Pick the district for this zone pass.",
     "childInvalid": "Enter the name of the child and an age from 1 to {max}.",
     "zoneBadge": "One district (zone)",
@@ -994,8 +1018,25 @@
       "SERVICE_NOT_ELIGIBLE": {
         "line": "Not valid on this bus",
         "helper": "Pass works on {services}"
+      },
+      "PAST_DESTINATION": {
+        "line": "Past destination",
+        "helper": "This ticket ends at {stop}"
+      },
+      "BEFORE_BOARDING_STOP": {
+        "line": "Too early to board",
+        "helper": "This ticket starts at {stop}"
+      },
+      "NOT_YET_VALID": {
+        "line": "Not valid yet",
+        "helper": "Valid from {time}"
+      },
+      "ROUTE_NOT_COVERED": {
+        "line": "Not valid on this route",
+        "helper": "This pass does not cover this route"
       }
-    }
+    },
+    "groupBoarded": "{boarded} of {size} boarded"
   },
   "opsApp": {
     "dashboard": "Depot dashboard",
@@ -1136,7 +1177,7 @@
       "booked": "Booked here",
       "boarded": "Boarded",
       "alighting": "Getting off",
-      "passes": "{count, plural, =0 {No pass holders boarded yet.} one {# pass holder boarded (stop not recorded).} other {# pass holders boarded (stop not recorded).}}"
+      "passes": "{count, plural, =0 {Every boarding has a recorded stop.} one {# boarding has no recorded stop.} other {# boardings have no recorded stop.}}"
     }
   },
   "adminApp": {
@@ -1145,7 +1186,7 @@
     "routesTitle": "Routes",
     "routesDesc": "Manage bus routes, ordered stops, and route alignments.",
     "stopsTitle": "Stops",
-    "stopsDesc": "Bus stands, boarding and dropping points across Andhra Pradesh.",
+    "stopsDesc": "Bus stands, boarding and dropping points across the network.",
     "timetablesTitle": "Timetables",
     "timetablesDesc": "Scheduled departures, operating days, and trip generation.",
     "usersTitle": "Users and roles",
@@ -1271,20 +1312,50 @@
     "users": "Users",
     "auditLogs": "Audit logs",
     "stops": "Stops",
-    "routes": "Routes"
+    "routes": "Routes",
+    "passTypes": {
+      "title": "Pass types",
+      "desc": "Prices and rules for new sales. Passes already sold keep what they were bought with.",
+      "openLink": "Manage pass types",
+      "name": "Pass",
+      "price": "Price",
+      "validity": "Validity",
+      "group": "People",
+      "sold": "Sold",
+      "demo": "Demo price",
+      "active": "On sale",
+      "edit": "Edit",
+      "editTitle": "Edit {name}",
+      "priceRupees": "Price in rupees",
+      "durationDays": "Days",
+      "groupSize": "People covered",
+      "sortOrder": "Order in the list",
+      "save": "Save for new sales",
+      "saved": "Pass type saved. New sales use it now.",
+      "untilDayEnd": "Until midnight",
+      "rollingDays": "{days, plural, one {# day} other {# days}}",
+      "yes": "Yes",
+      "no": "No",
+      "empty": "No pass types yet.",
+      "errors": {
+        "price": "Enter a price of 0 or more.",
+        "days": "Enter 1 to 366 days.",
+        "group": "Enter 1 to 10 people."
+      }
+    }
   },
   "govApp": {
     "title": "Command center",
     "connecting": "Connecting to live updates",
     "liveUpdated": "Live, updated {seconds} s ago",
     "breadcrumb": "Location in the network",
-    "state": "Andhra Pradesh",
+    "state": "State",
     "district": "District",
     "depot": "Depot",
     "route": "Route",
     "trip": "Trip",
     "mapTitle": "Network map",
-    "mapLegend": "Map of Andhra Pradesh: district markers show active buses and delayed trips, dots show buses, triangles show incidents",
+    "mapLegend": "Map of the state: district markers show active buses and delayed trips, dots show buses, triangles show incidents",
     "mapError": "The map could not load.",
     "districts": "Districts",
     "districtMarker": "{name}: {buses} active buses, {delayed} delayed trips, {incidents} open incidents. Open the district.",
@@ -1417,7 +1488,10 @@
           "hint": "Route demand and service performance for a month."
         }
       }
-    }
+    },
+    "allStates": "All states",
+    "statePicker": "States",
+    "openState": "Open the command center of {name}"
   },
   "feedbackPage": {
     "title": "Feedback",
@@ -1476,6 +1550,41 @@
     },
     "notYet": "not yet",
     "resolutionNote": "Note from the depot"
+  },
+  "schoolPass": {
+    "title": "School pass",
+    "intro": "For students travelling between home and their school or college. You declare that you study there; we never ask for or keep an ID number.",
+    "formTitle": "Check eligibility",
+    "consent": "I agree that this declaration is checked to give me a school pass.",
+    "isStudent": "I am a student at a school or college",
+    "institution": "Name of your school or college",
+    "institutionHint": "Used only for this check. We do not store it.",
+    "submit": "Check eligibility",
+    "errorSummary": "Please fix these:",
+    "errors": {
+      "consent": "Agree to the check to continue.",
+      "isStudent": "Confirm that you are a student.",
+      "institution": "Enter the name of your school or college.",
+      "stops": "Choose both stops.",
+      "sameStop": "Home and school stops must be different."
+    },
+    "eligibleTitle": "You can buy a school pass",
+    "stopsTitle": "Your route",
+    "stopsHint": "The pass works on buses whose route has both stops.",
+    "homeLabel": "Stop near home",
+    "destLabel": "Stop near school or college",
+    "placeholder": "Type a stop name",
+    "notEligibleTitle": "We could not confirm a school pass",
+    "reasons": {
+      "CONSENT_REQUIRED": "We need your agreement to run the check.",
+      "NOT_A_STUDENT": "The school pass is for students. You can buy a day, weekly or monthly pass.",
+      "INSTITUTION_REQUIRED": "Enter the name of your school or college and try again.",
+      "OTHER": "Something did not match. Try again or choose another pass."
+    },
+    "checkAgain": "Check again",
+    "otherPasses": "See other passes",
+    "errorTitle": "School pass could not load",
+    "done": "School pass bought. Activate it when you start travelling."
   },
   "splash": {
     "brand": "AP TransitOS",

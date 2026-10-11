@@ -7,6 +7,7 @@ import {
   formatMoney,
   formatTime,
   type PlaceDto,
+  PLATFORM_TIME_ZONE,
   SearchTripsResponse,
   ServiceDateString,
   type TripSummaryDto,
@@ -43,11 +44,9 @@ type TimeBand = (typeof TIME_BANDS)[number];
 
 function getIstHour(isoString: string): number {
   const hour = Number.parseInt(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Kolkata",
-      hour: "numeric",
-      hour12: false,
-    }).format(new Date(isoString)),
+    new Intl.DateTimeFormat("en-GB", { timeZone: PLATFORM_TIME_ZONE, hour: "numeric", hour12: false }).format(
+      new Date(isoString),
+    ),
     10,
   );
   // en-GB prints midnight as 24 in some engines
@@ -414,7 +413,7 @@ export function SearchClient({
                 const serviceKey = `serviceType.${trip.serviceType}`;
                 const serviceName = t.has(serviceKey) ? t(serviceKey) : trip.serviceType;
                 const departure = formatTime(trip.departureAt, locale);
-                // D-034 long journeys: an arrival on a later IST date says so ("06:15, next day")
+                // D-042 long journeys: an arrival on a later IST date says so ("06:15, next day")
                 const nextDay =
                   formatIstDate(new Date(trip.arrivalAt)) !==
                   formatIstDate(new Date(trip.departureAt));

@@ -5,7 +5,7 @@ import { z } from "zod";
 // HMAC is injected: the web passes Web Crypto, the API passes Node crypto.
 
 export const QR_PREFIX = "APT1";
-// D-034: 3 s so a screenshot or a forwarded code stops working almost at once.
+// D-042: 3 s so a screenshot or a forwarded code stops working almost at once.
 export const QR_PERIOD_SEC = 3;
 export const QR_CODE_LENGTH = 8;
 

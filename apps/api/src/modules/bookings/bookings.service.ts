@@ -266,7 +266,7 @@ export class BookingsService {
         reservationFeePaise: fareRule.reservationFeePaise,
       },
     });
-    // D-034: children under CHILD_MAX_AGE pay half (group tickets with ages)
+    // D-042: children under CHILD_MAX_AGE pay half (group tickets with ages)
     const totalPaise = freePass
       ? 0
       : groupFare(
@@ -445,12 +445,10 @@ export class BookingsService {
       throw new AppError("PASS_NOT_ELIGIBLE", "Free travel books one seat at a time");
     const passes = await this.prisma.pass.findMany({
       where: { userId, status: "ACTIVE", passType: { kind: "FREE_TRAVEL" } },
-      include: { passType: { select: { eligibleServiceTypes: true } } },
     });
     const live = passes.find((p) => isPassLive(p, now));
-    if (!live)
-      throw new AppError("PASS_NOT_ELIGIBLE", "Free travel needs an active free travel pass");
-    return { id: live.id, eligibleServiceTypes: live.passType.eligibleServiceTypes };
+    if (!live) throw new AppError("PASS_NOT_ELIGIBLE", "Free travel needs an active free travel pass");
+    return { id: live.id, eligibleServiceTypes: live.eligibleServiceTypes };
   }
 
   private async release(tripId: string, seatNos: string[], bookingId: string): Promise<void> {

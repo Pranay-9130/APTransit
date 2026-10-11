@@ -161,7 +161,7 @@ function SearchForm() {
           </Button>
         </form>
       </Card>
-      {/* D-034: pick From and To on the map, like Google Maps */}
+      {/* D-042: pick From and To on the map, like Google Maps */}
       <MapPicker from={from} to={to} onPick={(field, place) => update({ [field]: place })} />
     </div>
   );

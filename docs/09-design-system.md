@@ -28,7 +28,7 @@ Source of truth: `packages/ui/src/tokens.css`. Tailwind 4 reads them through `@t
 
 ### Colour: light
 
-v3 (D-034): light blue and white. The canvas is a pale sky blue, cards stay white, the accent is AP blue. `packages/ui/src/tokens.css` is the source of truth; `tokens.test.ts` keeps every text pair at AA.
+v3 (D-042): light blue and white. The canvas is a pale sky blue, cards stay white, the accent is AP blue. `packages/ui/src/tokens.css` is the source of truth; `tokens.test.ts` keeps every text pair at AA.
 
 | Token | Hex | Use | Contrast |
 | --- | --- | --- | --- |
@@ -245,7 +245,7 @@ Only `transform` and `opacity`. CSS only, no animation library.
 - Lists stagger 30 ms per item, at most 6 items. Success draws a check once, no confetti.
 - `prefers-reduced-motion: reduce`: transitions become opacity only, pulsing and the ticket band stop.
 
-### Opening animation (D-034)
+### Opening animation (D-042)
 
 - `BusSplash` (`apps/web/components/bus-splash.tsx`) shows on every full page load: app name, tagline, a bus driving across a dashed road. Pure CSS, server rendered, `aria-hidden`, `pointer-events-none`, so it never blocks input or screen readers.
 - Utilities: `animate-bus-drive`, `animate-wheel-spin`, `animate-road-slide`, `animate-splash-out`. Duration token `--dur-splash` (2.2 s). Under reduced motion the layer fades after 0.4 s.

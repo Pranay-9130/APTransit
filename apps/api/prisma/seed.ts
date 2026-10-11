@@ -6,7 +6,20 @@ import type { Prisma } from "../src/generated/prisma/client";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { TimetableInput } from "../src/modules/trips/trip-generator";
 import { generateTripsForTimetables } from "../src/modules/trips/trip-generator";
-import { BUS_TYPES, DEPOTS, DISTRICTS, ROUTE_DEFS, TIMETABLE_DEFS, STOPS } from "./seed-data";
+import {
+  AP_STATE,
+  BUS_TYPES,
+  DEPOTS,
+  DISTRICTS,
+  ROUTE_DEFS,
+  type StateSeed,
+  TG_DEPOTS,
+  TG_DISTRICTS,
+  TG_STATE,
+  TG_STOPS,
+  TIMETABLE_DEFS,
+  STOPS,
+} from "./seed-data";
 
 try {
   process.loadEnvFile(".env");
@@ -26,6 +39,71 @@ const prisma = new PrismaClient({
 
 function hashKey(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+/** Creates or updates a state by code (D-034). AP keeps the fixed id the backfill migration used. */
+async function upsertState(state: StateSeed): Promise<string> {
+  const [minLng, minLat, maxLng, maxLat] = state.bounds;
+  const data = {
+    nameEn: state.nameEn,
+    nameTe: state.nameTe,
+    codePrefix: state.codePrefix,
+    minLat,
+    minLng,
+    maxLat,
+    maxLng,
+    centerLat: state.center.lat,
+    centerLng: state.center.lng,
+    defaultZoom: state.zoom,
+    isActive: true,
+  };
+  const row = await prisma.state.upsert({
+    where: { code: state.code },
+    create: { ...(state.id ? { id: state.id } : {}), code: state.code, ...data },
+    update: data,
+  });
+  return row.id;
+}
+
+/**
+ * `--with-tg`: Telangana as pure data (two districts, bus stands, depots and a state admin). The gov
+ * state picker then shows it with its own map and districts, with no code change (D-034).
+ */
+async function seedTelangana(): Promise<void> {
+  const stateId = await upsertState(TG_STATE);
+  const districts = new Map<string, string>();
+  for (const d of TG_DISTRICTS) {
+    const row = await prisma.district.upsert({
+      where: { code: d.code },
+      create: { code: d.code, nameEn: d.nameEn, nameTe: d.nameTe, stateId },
+      update: { nameEn: d.nameEn, nameTe: d.nameTe, stateId },
+    });
+    districts.set(d.code, row.id);
+  }
+  const stands = new Map<string, string>();
+  for (const s of TG_STOPS) {
+    const districtId = districts.get(s.districtCode)!;
+    const place = { nameEn: s.nameEn, nameTe: s.nameTe, districtId, lat: s.lat, lng: s.lng };
+    const stand = await prisma.busStand.upsert({ where: { code: s.code }, create: { code: s.code, ...place }, update: place });
+    stands.set(s.code, stand.id);
+    await prisma.stop.upsert({
+      where: { code: s.code },
+      create: { code: s.code, ...place, busStandId: stand.id },
+      update: { ...place, busStandId: stand.id },
+    });
+  }
+  for (const d of TG_DEPOTS) {
+    const place = { nameEn: d.nameEn, nameTe: d.nameTe, districtId: districts.get(d.districtCode)!, busStandId: stands.get(d.busStandCode)! };
+    await prisma.depot.upsert({ where: { code: d.code }, create: { code: d.code, ...place }, update: place });
+  }
+  const admin = await prisma.user.upsert({
+    where: { email: "admin.tg@aptransit.test" },
+    create: { email: "admin.tg@aptransit.test", name: "Admin TG", preferredLocale: "en" },
+    update: { name: "Admin TG" },
+  });
+  if (!(await prisma.userRole.findFirst({ where: { userId: admin.id, role: "STATE_ADMIN", stateId } })))
+    await prisma.userRole.create({ data: { userId: admin.id, role: "STATE_ADMIN", stateId } });
+  console.log(`Telangana stub seeded: ${districts.size} districts, ${TG_DEPOTS.length} depots, admin.tg@aptransit.test`);
 }
 
 export async function runSeed(): Promise<void> {
@@ -82,13 +160,15 @@ export async function runSeed(): Promise<void> {
   }
   console.log("Refund policy seeded.");
 
-  // 3. Districts (docs/19)
+  // 3. State and districts (docs/19, D-034)
+  const apStateId = await upsertState(AP_STATE);
+  console.log("State seeded: AP");
   const districtMap = new Map<string, string>();
   for (const dist of DISTRICTS) {
     const row = await prisma.district.upsert({
       where: { code: dist.code },
-      create: { code: dist.code, nameEn: dist.nameEn, nameTe: dist.nameTe },
-      update: { nameEn: dist.nameEn, nameTe: dist.nameTe },
+      create: { code: dist.code, nameEn: dist.nameEn, nameTe: dist.nameTe, stateId: apStateId },
+      update: { nameEn: dist.nameEn, nameTe: dist.nameTe, stateId: apStateId },
     });
     districtMap.set(dist.code, row.id);
   }
@@ -232,112 +312,36 @@ export async function runSeed(): Promise<void> {
   }
   console.log(`Bus types and fare rules seeded: ${busTypeMap.size}`);
 
-  // 7. Pass types (docs/07 section 8)
+  // 7. Pass types (docs/07 section 8). Prices are DEMO values pending client confirmation (D-036)
   const standardServices: Array<
     "PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY" | "METRO_EXPRESS" | "EXPRESS"
   > = ["PALLEVELUGU", "ULTRA_PALLEVELUGU", "CITY_ORDINARY", "METRO_EXPRESS", "EXPRESS"];
-
-  const villageServices: Array<"PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY"> = [
-    "PALLEVELUGU",
-    "ULTRA_PALLEVELUGU",
-    "CITY_ORDINARY",
-  ];
-
-  // D-034: daily, weekly and monthly passes; zone passes are valid in one district the buyer picks.
+  const base = { eligibleServiceTypes: standardServices, scheme: null, validityMode: "ROLLING_DAYS" as const, groupSize: 1, routeRestricted: false, isDemo: true, zoneScoped: false };
+  // D-042 zone passes: valid on village and city ordinary services inside one district the buyer picks
+  const villageServices: Array<"PALLEVELUGU" | "ULTRA_PALLEVELUGU" | "CITY_ORDINARY"> = ["PALLEVELUGU", "ULTRA_PALLEVELUGU", "CITY_ORDINARY"];
+  const zone = { ...base, eligibleServiceTypes: villageServices, zoneScoped: true };
   const passTypes = [
-    {
-      kind: "DAILY" as const,
-      nameEn: "Day Pass",
-      nameTe: "రోజు పాస్",
-      durationDays: 1,
-      pricePaise: 15000,
-      eligibleServiceTypes: standardServices,
-      scheme: undefined,
-      zoneScoped: false,
-    },
-    {
-      kind: "DAILY" as const,
-      nameEn: "Zone Day Pass",
-      nameTe: "జోన్ రోజు పాస్",
-      durationDays: 1,
-      pricePaise: 6000,
-      eligibleServiceTypes: villageServices,
-      scheme: undefined,
-      zoneScoped: true,
-    },
-    {
-      kind: "MONTHLY" as const,
-      nameEn: "Zone Monthly Pass",
-      nameTe: "జోన్ నెలవారీ పాస్",
-      durationDays: 30,
-      pricePaise: 90000,
-      eligibleServiceTypes: villageServices,
-      scheme: undefined,
-      zoneScoped: true,
-    },
-    {
-      kind: "WEEKLY" as const,
-      nameEn: "Weekly Pass",
-      nameTe: "వారపు పాస్",
-      durationDays: 7,
-      pricePaise: 45000,
-      eligibleServiceTypes: standardServices,
-      scheme: undefined,
-      zoneScoped: false,
-    },
-    {
-      kind: "MONTHLY" as const,
-      nameEn: "Monthly Pass",
-      nameTe: "నెలవారీ పాస్",
-      durationDays: 30,
-      pricePaise: 160000,
-      eligibleServiceTypes: standardServices,
-      scheme: undefined,
-      zoneScoped: false,
-    },
-    {
-      kind: "FREE_TRAVEL" as const,
-      nameEn: "Free Travel Pass (Stree Shakti)",
-      nameTe: "ఉచిత ప్రయాణ పాస్ (స్త్రీ శక్తి)",
-      durationDays: 365,
-      pricePaise: 0,
-      eligibleServiceTypes: standardServices,
-      scheme: "STREE_SHAKTI" as const,
-      zoneScoped: false,
-    },
+    { ...base, kind: "DAY" as const, nameEn: "Day Pass", nameTe: "రోజు పాస్", durationDays: 1, validityMode: "UNTIL_DAY_END" as const, pricePaise: 12000, sortOrder: 1 },
+    { ...base, kind: "WEEKLY" as const, nameEn: "Weekly Pass", nameTe: "వారపు పాస్", durationDays: 7, pricePaise: 45000, sortOrder: 2 },
+    { ...base, kind: "MONTHLY" as const, nameEn: "Monthly Pass", nameTe: "నెలవారీ పాస్", durationDays: 30, pricePaise: 160000, sortOrder: 3 },
+    { ...base, kind: "FAMILY" as const, nameEn: "Family Pass", nameTe: "కుటుంబ పాస్", durationDays: 7, pricePaise: 100000, groupSize: 4, sortOrder: 4 },
+    { ...base, kind: "SCHOOL" as const, nameEn: "School Pass", nameTe: "విద్యార్థి పాస్", durationDays: 30, pricePaise: 60000, scheme: "STUDENT" as const, routeRestricted: true, sortOrder: 5 },
+    { ...base, kind: "ANNUAL" as const, nameEn: "Annual Pass", nameTe: "వార్షిక పాస్", durationDays: 365, pricePaise: 1500000, sortOrder: 6 },
+    { ...base, kind: "FREE_TRAVEL" as const, nameEn: "Free Travel Pass (Stree Shakti)", nameTe: "ఉచిత ప్రయాణ పాస్ (స్త్రీ శక్తి)", durationDays: 365, pricePaise: 0, scheme: "STREE_SHAKTI" as const, isDemo: false, sortOrder: 7 },
+    { ...zone, kind: "DAY" as const, nameEn: "Zone Day Pass", nameTe: "జోన్ రోజు పాస్", durationDays: 1, validityMode: "UNTIL_DAY_END" as const, pricePaise: 6000, sortOrder: 8 },
+    { ...zone, kind: "MONTHLY" as const, nameEn: "Zone Monthly Pass", nameTe: "జోన్ నెలవారీ పాస్", durationDays: 30, pricePaise: 90000, sortOrder: 9 },
   ];
 
   for (const pt of passTypes) {
     const existing = await prisma.passType.findFirst({
       where: { kind: pt.kind, zoneScoped: pt.zoneScoped },
     });
+    const data = { ...pt, stateId: apStateId };
     if (existing) {
-      await prisma.passType.update({
-        where: { id: existing.id },
-        data: {
-          nameEn: pt.nameEn,
-          nameTe: pt.nameTe,
-          durationDays: pt.durationDays,
-          pricePaise: pt.pricePaise,
-          eligibleServiceTypes: pt.eligibleServiceTypes,
-          scheme: pt.scheme,
-          zoneScoped: pt.zoneScoped,
-        },
-      });
+      const { kind: _kind, ...rest } = data;
+      await prisma.passType.update({ where: { id: existing.id }, data: rest });
     } else {
-      await prisma.passType.create({
-        data: {
-          kind: pt.kind,
-          nameEn: pt.nameEn,
-          nameTe: pt.nameTe,
-          durationDays: pt.durationDays,
-          pricePaise: pt.pricePaise,
-          eligibleServiceTypes: pt.eligibleServiceTypes,
-          scheme: pt.scheme,
-          zoneScoped: pt.zoneScoped,
-          isActive: true,
-        },
-      });
+      await prisma.passType.create({ data: { ...data, isActive: true } });
     }
   }
   console.log("Pass types seeded.");
@@ -484,42 +488,13 @@ export async function runSeed(): Promise<void> {
   const demoUsers = [
     { email: "citizen@aptransit.test", name: "Citizen Ravi", role: "CITIZEN" as const },
     { email: "citizen2@aptransit.test", name: "Citizen Lakshmi", role: "CITIZEN" as const },
-    {
-      email: "driver.knl@aptransit.test",
-      name: "Driver Srinivas",
-      role: "DRIVER" as const,
-      depotId: knlDepotId,
-    },
-    {
-      email: "conductor.knl@aptransit.test",
-      name: "Conductor Prasad",
-      role: "CONDUCTOR" as const,
-      depotId: knlDepotId,
-    },
-    {
-      email: "staff.knl@aptransit.test",
-      name: "Staff Venkat",
-      role: "DEPOT_STAFF" as const,
-      depotId: knlDepotId,
-    },
-    {
-      email: "manager.knl@aptransit.test",
-      name: "Manager Ramesh",
-      role: "DEPOT_MANAGER" as const,
-      depotId: knlDepotId,
-    },
-    {
-      email: "officer.knl@aptransit.test",
-      name: "Officer Anusha",
-      role: "DISTRICT_OFFICER" as const,
-      districtId: knlDistrictId,
-    },
-    {
-      email: "transport@aptransit.test",
-      name: "Officer Chandrasekhar",
-      role: "TRANSPORT_OFFICER" as const,
-    },
-    { email: "admin@aptransit.test", name: "Admin AP", role: "STATE_ADMIN" as const },
+    { email: "driver.knl@aptransit.test", name: "Driver Srinivas", role: "DRIVER" as const, depotId: knlDepotId },
+    { email: "conductor.knl@aptransit.test", name: "Conductor Prasad", role: "CONDUCTOR" as const, depotId: knlDepotId },
+    { email: "staff.knl@aptransit.test", name: "Staff Venkat", role: "DEPOT_STAFF" as const, depotId: knlDepotId },
+    { email: "manager.knl@aptransit.test", name: "Manager Ramesh", role: "DEPOT_MANAGER" as const, depotId: knlDepotId },
+    { email: "officer.knl@aptransit.test", name: "Officer Anusha", role: "DISTRICT_OFFICER" as const, districtId: knlDistrictId },
+    { email: "transport@aptransit.test", name: "Officer Chandrasekhar", role: "TRANSPORT_OFFICER" as const, stateId: apStateId },
+    { email: "admin@aptransit.test", name: "Admin AP", role: "STATE_ADMIN" as const, stateId: apStateId },
     { email: "root@aptransit.test", name: "Super Admin", role: "SUPER_ADMIN" as const },
   ];
 
@@ -554,8 +529,11 @@ export async function runSeed(): Promise<void> {
           role: u.role,
           depotId: u.depotId,
           districtId: u.districtId,
+          stateId: u.stateId,
         },
       });
+    } else if (existingRole.stateId !== (u.stateId ?? null)) {
+      await prisma.userRole.update({ where: { id: existingRole.id }, data: { stateId: u.stateId ?? null } });
     }
   }
   console.log("Demo accounts seeded.");
@@ -788,6 +766,7 @@ export async function runSeed(): Promise<void> {
   console.log("Trips and initial assignments seeded.");
 
   const args = process.argv.slice(2);
+  if (args.includes("--with-tg")) await seedTelangana();
   const historyIdx = args.indexOf("--history");
   if (historyIdx !== -1) {
     const days = parseInt(args[historyIdx + 1]!, 10) || 14;

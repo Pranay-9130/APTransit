@@ -199,7 +199,7 @@ describe("refundQuote", () => {
   });
 });
 
-describe("group fares (D-034)", () => {
+describe("group fares (D-042)", () => {
   it("charges children half, rounded to the rupee", async () => {
     const { groupFare, passengerFarePaise, splitGroupTotal } = await import("./fare");
     expect(passengerFarePaise(15_100, 30)).toBe(15_100);

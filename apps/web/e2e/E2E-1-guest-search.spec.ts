@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
 test.describe("E2E-1: Guest search journey", () => {
   test("home to search to bus details", async ({ page }) => {
     // 1. Land on the home page
-    // D-034: home needs login first
+    // D-042: home needs login first
     await login(page, uniqueEmail("home"));
     await page.goto("/");
     await expect(page).toHaveTitle(/AP TransitOS/);

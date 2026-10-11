@@ -118,7 +118,7 @@ Day 14 adds /ops, /ops/buses, /ops/trips and /ops/incidents with live query upda
 
 New shared components go in `packages/ui/src/components`, exported from `index.ts`, with a test. Design rules: docs/09 and docs/10.
 
-## v3 (D-034, D-035)
+## v3 (D-042, D-043)
 
 - `components/bus-splash.tsx` is in the root layout: pure CSS, no state. Change timing with `--dur-splash`.
 - `/` needs login (proxy). Home = `home-search.tsx` plus `map-picker.tsx` (dynamic MapView, tappable markers via `onMarkerClick`, list fallback for keyboard and screen readers).

@@ -25,9 +25,12 @@ type AuditActor = Pick<LogAuditParams, "actorUserId" | "actorRole" | "ip" | "use
 
 const MS_PER_MIN = 60_000;
 
+const STOP_NAMES = { select: { id: true, nameEn: true, nameTe: true } } as const;
 const PASS_INCLUDE = {
   passType: true,
   eligibilityCheck: { select: { expiresAt: true } },
+  homeStop: STOP_NAMES,
+  destStop: STOP_NAMES,
 } as const;
 
 interface LoadedPassType {
@@ -36,19 +39,33 @@ interface LoadedPassType {
   nameEn: string;
   nameTe: string;
   durationDays: number;
+  validityMode: PassDto["validityMode"];
   pricePaise: number;
   eligibleServiceTypes: PassDto["eligibleServiceTypes"];
-  scheme: "STREE_SHAKTI" | null;
+  scheme: PassTypeDto["scheme"];
+  groupSize: number;
+  routeRestricted: boolean;
+  isDemo: boolean;
   zoneScoped: boolean;
   isActive: boolean;
 }
 
+type StopRef = { id: string; nameEn: string; nameTe: string } | null;
+
+/** A pass with its purchase time copy of the type's rules (D-036): edits to the type never reach it. */
 export interface LoadedPass {
   id: string;
   code: string;
   userId: string;
   passTypeId: string;
   status: PassDto["status"];
+  pricePaise: number;
+  durationDays: number;
+  validityMode: PassDto["validityMode"];
+  eligibleServiceTypes: PassDto["eligibleServiceTypes"];
+  groupSize: number;
+  homeStopId: string | null;
+  destStopId: string | null;
   activatedAt: Date | null;
   validFrom: Date | null;
   validUntil: Date | null;
@@ -59,6 +76,8 @@ export interface LoadedPass {
   createdAt: Date;
   passType: LoadedPassType;
   eligibilityCheck: { expiresAt: Date } | null;
+  homeStop?: StopRef;
+  destStop?: StopRef;
 }
 
 /** docs/06 Passes. Owner only; every rule comes from pass-rules.ts. Passes are never giftable. */
@@ -71,10 +90,11 @@ export class PassesService {
     private readonly qr: QrService,
   ) {}
 
+  /** GET /pass-types: the catalog in its display order (D-036). */
   async listTypes(): Promise<PassTypeDto[]> {
     const types = (await this.prisma.passType.findMany({
       where: { isActive: true },
-      orderBy: { pricePaise: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { pricePaise: "asc" }],
     })) as LoadedPassType[];
     return types.map((t) => ({
       id: t.id,
@@ -85,6 +105,10 @@ export class PassesService {
       pricePaise: t.pricePaise,
       eligibleServiceTypes: t.eligibleServiceTypes,
       scheme: t.scheme,
+      validityMode: t.validityMode,
+      groupSize: t.groupSize,
+      routeRestricted: t.routeRestricted,
+      isDemo: t.isDemo,
       zoneScoped: t.zoneScoped,
     }));
   }
@@ -103,26 +127,20 @@ export class PassesService {
   }
 
   /**
-   * POST /passes. Paid kinds start PENDING_PAYMENT (a recent unpaid one of the same type is reused,
-   * so a retried Buy never makes two). FREE_TRAVEL is READY at once, but only with a current ELIGIBLE check.
+   * POST /passes. Paid kinds start PENDING_PAYMENT (a recent unpaid one of the same type and stops
+   * is reused, so a retried Buy never makes two). FREE_TRAVEL is READY at once. A scheme type needs a
+   * current ELIGIBLE check; a route restricted type needs both stops. The type's price, duration,
+   * mode, services and group size are copied onto the pass now (D-036).
    */
-  async create(
-    userId: string,
-    passTypeId: string,
-    actor: AuditActor,
-    now = new Date(),
-    options: Pick<CreatePassInput, "zoneDistrictId" | "child"> = {},
-  ): Promise<PassDto> {
-    const type = (await this.prisma.passType.findUnique({
-      where: { id: passTypeId },
-    })) as LoadedPassType | null;
+  async create(userId: string, input: CreatePassInput, actor: AuditActor, now = new Date()): Promise<PassDto> {
+    const type = (await this.prisma.passType.findUnique({ where: { id: input.passTypeId } })) as LoadedPassType | null;
     if (!type?.isActive) throw new AppError("NOT_FOUND", "Pass type not found");
-    // D-034: a zone pass names its district; other passes never carry one.
+    // D-042: a zone pass names its district; other passes never carry one.
     let zoneDistrictId: string | null = null;
     if (type.zoneScoped) {
-      const district = options.zoneDistrictId
+      const district = input.zoneDistrictId
         ? await this.prisma.district.findUnique({
-            where: { id: options.zoneDistrictId },
+            where: { id: input.zoneDistrictId },
             select: { id: true },
           })
         : null;
@@ -132,23 +150,31 @@ export class PassesService {
         });
       zoneDistrictId = district.id;
     }
-    const child = type.kind === "FREE_TRAVEL" ? undefined : options.child;
+    const child = type.kind === "FREE_TRAVEL" ? undefined : input.child;
 
-    const check = type.kind === "FREE_TRAVEL" ? await this.eligibility.current(userId) : null;
+    const check = type.scheme ? await this.eligibility.current(userId, type.scheme) : null;
     const openFree =
       type.kind === "FREE_TRAVEL"
         ? (await this.prisma.pass.count({
             where: { userId, passTypeId: type.id, status: { in: ["READY", "ACTIVE"] } },
           })) > 0
         : false;
-    const rule = canCreatePass(type.kind, check, openFree, now);
+    const hasStops = Boolean(input.homeStopId && input.destStopId);
+    const rule = canCreatePass(type, check, openFree, hasStops, now);
     if (!rule.ok) {
-      throw new AppError(
-        rule.error,
+      const message =
         rule.error === "ELIGIBILITY_REQUIRED"
-          ? "A free travel pass needs an eligibility check first"
-          : "You already have a free travel pass",
-      );
+          ? "This pass needs an eligibility check first"
+          : rule.error === "VALIDATION_FAILED"
+            ? type.routeRestricted
+              ? "Choose your home stop and your institution's stop"
+              : "This pass is not tied to stops"
+            : "You already have a free travel pass";
+      throw new AppError(rule.error, message);
+    }
+    if (hasStops) {
+      const found = await this.prisma.stop.count({ where: { id: { in: [input.homeStopId!, input.destStopId!] } } });
+      if (found !== 2) throw new AppError("VALIDATION_FAILED", "Stop not found", { field: "homeStopId" });
     }
 
     if (type.kind !== "FREE_TRAVEL") {
@@ -157,6 +183,8 @@ export class PassesService {
           userId,
           passTypeId: type.id,
           status: "PENDING_PAYMENT",
+          homeStopId: input.homeStopId ?? null,
+          destStopId: input.destStopId ?? null,
           zoneDistrictId,
           holderName: child?.name ?? null,
           createdAt: { gt: new Date(now.getTime() - PASS_PAYMENT_ABANDON_MINUTES * MS_PER_MIN) },
@@ -173,6 +201,13 @@ export class PassesService {
         userId,
         passTypeId: type.id,
         status: type.kind === "FREE_TRAVEL" ? "READY" : "PENDING_PAYMENT",
+        pricePaise: type.pricePaise,
+        durationDays: type.durationDays,
+        validityMode: type.validityMode,
+        eligibleServiceTypes: type.eligibleServiceTypes,
+        groupSize: type.groupSize,
+        homeStopId: input.homeStopId ?? null,
+        destStopId: input.destStopId ?? null,
         eligibilityCheckId: check?.id ?? null,
         qrSecret: this.qr.newRotSecret(),
         zoneDistrictId,
@@ -186,7 +221,7 @@ export class PassesService {
       action: "pass.create",
       entityType: "pass",
       entityId: pass.id,
-      after: { kind: type.kind, status: pass.status, zoneDistrictId, childCard: Boolean(child) },
+      after: { kind: type.kind, status: pass.status, pricePaise: pass.pricePaise, groupSize: pass.groupSize, zoneDistrictId, childCard: Boolean(child) },
       ...actor,
     });
     return this.toDto(pass, await this.activateWithinDays(), false, now);
@@ -220,11 +255,7 @@ export class PassesService {
       );
     }
 
-    const { validFrom, validUntil } = passValidity(
-      now,
-      pass.passType.durationDays,
-      pass.eligibilityCheck?.expiresAt,
-    );
+    const { validFrom, validUntil } = passValidity(now, pass, pass.eligibilityCheck?.expiresAt);
     // Conditional update: a parallel activate finds the status moved on
     const { count } = await this.prisma.pass.updateMany({
       where: { id: pass.id, status: "READY" },
@@ -287,9 +318,14 @@ export class PassesService {
       nameEn: pass.passType.nameEn,
       nameTe: pass.passType.nameTe,
       status: pass.status,
-      pricePaise: pass.passType.pricePaise,
-      durationDays: pass.passType.durationDays,
-      eligibleServiceTypes: pass.passType.eligibleServiceTypes,
+      // The purchase time copy, never the type's current values (D-036)
+      pricePaise: pass.pricePaise,
+      durationDays: pass.durationDays,
+      eligibleServiceTypes: pass.eligibleServiceTypes,
+      validityMode: pass.validityMode,
+      groupSize: pass.groupSize,
+      homeStop: pass.homeStop ?? null,
+      destStop: pass.destStop ?? null,
       zoneDistrictId: pass.zoneDistrictId,
       holderName: pass.holderName,
       holderAge: pass.holderAge,
@@ -298,16 +334,8 @@ export class PassesService {
       activatedAt: pass.activatedAt?.toISOString() ?? null,
       validFrom: pass.validFrom?.toISOString() ?? null,
       validUntil: pass.validUntil?.toISOString() ?? null,
-      activationValidUntil: (
-        pass.validUntil ??
-        passValidity(now, pass.passType.durationDays, pass.eligibilityCheck?.expiresAt).validUntil
-      ).toISOString(),
-      canActivate: canActivatePass(
-        pass,
-        activateWithinDays,
-        pass.status === "READY" && hasActiveOfKind,
-        now,
-      ).ok,
+      activationValidUntil: (pass.validUntil ?? passValidity(now, pass, pass.eligibilityCheck?.expiresAt).validUntil).toISOString(),
+      canActivate: canActivatePass(pass, activateWithinDays, pass.status === "READY" && hasActiveOfKind, now).ok,
     };
   }
 

@@ -42,7 +42,7 @@ function loadGsi(): Promise<void> {
 export const googleSignInEnabled = CLIENT_ID.length > 0;
 
 /**
- * D-035: the official "Sign in with Google" button (Google Identity Services). The ID token goes
+ * D-043: the official "Sign in with Google" button (Google Identity Services). The ID token goes
  * to POST /auth/google; the API checks it with Google and starts the same session as OTP login.
  */
 export function GoogleSignIn({

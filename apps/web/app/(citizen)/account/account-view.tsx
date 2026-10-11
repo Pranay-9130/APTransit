@@ -143,7 +143,7 @@ function AccountDetails({ me }: { me: MeDto }) {
         </Section>
       ) : null}
 
-      {/* D-034: passes (daily, monthly, zone, child cards), help and the terms in one place */}
+      {/* D-042: passes (daily, monthly, zone, child cards), help and the terms in one place */}
       <Section title={t("account.more")} id="account-more">
         <ul className="flex flex-col divide-y divide-hairline">
           {(

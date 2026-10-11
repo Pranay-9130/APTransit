@@ -5,7 +5,7 @@
 
 const MAP_ORIGIN = "https://tiles.openfreemap.org";
 const RAZORPAY = ["https://checkout.razorpay.com", "https://api.razorpay.com"];
-/** D-035: Sign in with Google (Google Identity Services script, button frame and its styles). */
+/** D-043: Sign in with Google (Google Identity Services script, button frame and its styles). */
 const GOOGLE = "https://accounts.google.com";
 
 /** http(s) origin plus its ws(s) twin, for the Socket.IO server. */

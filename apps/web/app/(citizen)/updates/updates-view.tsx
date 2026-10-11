@@ -109,7 +109,7 @@ export function UpdatesView() {
     );
   }
 
-  // Grouped by day in Asia/Kolkata, newest first
+  // Grouped by day in IST, newest first
   const today = now ? formatIstDate(new Date(now)) : "";
   const yesterday = now ? formatIstDate(new Date(now - DAY_MS)) : "";
   const groups = new Map<string, NotificationDto[]>();

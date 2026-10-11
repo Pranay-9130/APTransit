@@ -9,7 +9,7 @@ export const SESSION_COOKIE = "apt_session";
 
 /** Route prefixes that need a logged in user (permission checks happen in the page). */
 export const PROTECTED_PREFIXES = [
-  // D-034: the app opens on login first (exact "/" only; search, track and timetable stay public)
+  // D-042: the app opens on login first (exact "/" only; search, track and timetable stay public)
   "/",
   "/book",
   "/tickets",

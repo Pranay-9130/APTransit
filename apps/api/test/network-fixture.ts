@@ -1,17 +1,6 @@
-import type {
-  BusStandDto,
-  BusStandRouteDto,
-  DistrictDto,
-  RouteDto,
-  ServiceType,
-  TripStatus,
-} from "@aptransit/shared";
-import { BUS_TYPES, DISTRICTS, ROUTE_DEFS, STOPS, TIMETABLE_DEFS } from "../prisma/seed-data";
-import type {
-  StopSearchRow,
-  TripRow,
-  TripRowsArgs,
-} from "../src/modules/network/network.repository";
+import type { BusStandDto, BusStandRouteDto, DistrictDto, RouteDto, ServiceType, StateDto, TripStatus } from "@aptransit/shared";
+import { AP_STATE, AP_STATE_ID, BUS_TYPES, DISTRICTS, ROUTE_DEFS, STOPS, TIMETABLE_DEFS } from "../prisma/seed-data";
+import type { StopSearchRow, TripRow, TripRowsArgs } from "../src/modules/network/network.repository";
 import { generateTripsForTimetables } from "../src/modules/trips/trip-generator";
 
 // In memory copy of the docs/19 network with the same query semantics as NetworkRepository,
@@ -152,6 +141,21 @@ export class FakeNetworkRepository {
     }));
   }
 
+  async states(): Promise<StateDto[]> {
+    const [minLng, minLat, maxLng, maxLat] = AP_STATE.bounds;
+    return [
+      {
+        id: AP_STATE_ID,
+        code: AP_STATE.code,
+        nameEn: AP_STATE.nameEn,
+        nameTe: AP_STATE.nameTe,
+        center: AP_STATE.center,
+        bounds: [minLng, minLat, maxLng, maxLat],
+        zoom: AP_STATE.zoom,
+      },
+    ];
+  }
+
   async districts(): Promise<DistrictDto[]> {
     this.calls.districts++;
     return DISTRICTS.map((d) => ({
@@ -159,6 +163,7 @@ export class FakeNetworkRepository {
       code: d.code,
       nameEn: d.nameEn,
       nameTe: d.nameTe,
+      stateId: AP_STATE_ID,
       busStandCount: STOPS.filter((s) => s.isBusStand && s.districtCode === d.code).length,
     })).sort((a, b) => a.nameEn.localeCompare(b.nameEn));
   }

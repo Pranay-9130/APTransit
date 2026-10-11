@@ -33,7 +33,7 @@ The full plan (113 sections) is a multi month program. In 20 days two developers
 | Notifications | In app inbox and email for booking, activation, delay, cancellation, pass expiry, complaint update | 43, 65 |
 | Quality | Unit, integration, Playwright e2e, a11y checks, staging deploy, GPS simulator | 78 to 81 |
 
-### Added in v3 (owner request, D-034 and D-035)
+### Added in v3 (owner request, D-042 and D-043)
 
 - Login first with a bus opening animation, light blue and white theme.
 - Google Maps style home: From and To bars plus a stop map picker and "use my location".

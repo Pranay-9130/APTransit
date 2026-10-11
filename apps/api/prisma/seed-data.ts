@@ -1,3 +1,30 @@
+export interface StateSeed {
+  /** Fixed for AP so the backfill migration and the seed agree; new states get a generated id. */
+  id?: string;
+  code: string;
+  nameEn: string;
+  nameTe: string;
+  codePrefix: string;
+  /** [minLng, minLat, maxLng, maxLat] */
+  bounds: [number, number, number, number];
+  center: { lat: number; lng: number };
+  zoom: number;
+}
+
+/** Same id as migration 20261009000100_states_backfill_ap (D-034). */
+export const AP_STATE_ID = "stateap000000000000000000";
+
+export const AP_STATE: StateSeed = {
+  id: AP_STATE_ID,
+  code: "AP",
+  nameEn: "Andhra Pradesh",
+  nameTe: "ఆంధ్రప్రదేశ్",
+  codePrefix: "AP",
+  bounds: [76.7, 12.6, 84.8, 19.95],
+  center: { lat: 16, lng: 78 },
+  zoom: 7,
+};
+
 export interface DistrictSeed {
   code: string;
   nameEn: string;
@@ -15,7 +42,7 @@ export const DISTRICTS: DistrictSeed[] = [
   { code: "GNT", nameEn: "Guntur", nameTe: "గుంటూరు" },
   { code: "NTR", nameEn: "NTR", nameTe: "ఎన్టీఆర్" },
   { code: "VSP", nameEn: "Visakhapatnam", nameTe: "విశాఖపట్నం" },
-  // D-034: long journey corridor Vijayawada to Visakhapatnam
+  // D-042: long journey corridor Vijayawada to Visakhapatnam
   { code: "ELR", nameEn: "Eluru", nameTe: "ఏలూరు" },
   { code: "EGD", nameEn: "East Godavari", nameTe: "తూర్పు గోదావరి" },
 ];
@@ -437,7 +464,7 @@ export const ROUTE_DEFS: RouteSeedDef[] = [
     ],
   },
   {
-    // D-034: long overnight journey (350 km)
+    // D-042: long overnight journey (350 km)
     code: "VJA-VSP-01",
     reverseCode: "VSP-VJA-02",
     nameEn: "Vijayawada to Visakhapatnam",
@@ -725,17 +752,40 @@ const FORWARD_TIMETABLES: {
 ];
 
 /** docs/19 "Timetables": forward departures, and the reverse route with the same pattern 30 min later. */
-export const TIMETABLE_DEFS: TimetableSeedDef[] = FORWARD_TIMETABLES.flatMap(
-  ({ routeCode, reverseCode, departures }) => [
-    ...departures.map(([departureLocal, serviceType]) => ({
-      routeCode,
-      departureLocal,
-      serviceType,
-    })),
-    ...departures.map(([departureLocal, serviceType]) => ({
-      routeCode: reverseCode,
-      departureLocal: toHhmm(toMinutes(departureLocal) + 30),
-      serviceType,
-    })),
-  ],
-);
+export const TIMETABLE_DEFS: TimetableSeedDef[] = FORWARD_TIMETABLES.flatMap(({ routeCode, reverseCode, departures }) => [
+  ...departures.map(([departureLocal, serviceType]) => ({ routeCode, departureLocal, serviceType })),
+  ...departures.map(([departureLocal, serviceType]) => ({
+    routeCode: reverseCode,
+    departureLocal: toHhmm(toMinutes(departureLocal) + 30),
+    serviceType,
+  })),
+]);
+
+/**
+ * Telangana stub behind `pnpm db:seed --with-tg` (D-034): two districts, each with a bus stand and
+ * a depot, and a state admin. It proves a new state needs only data. Not real operations data.
+ */
+export const TG_STATE: StateSeed = {
+  code: "TG",
+  nameEn: "Telangana",
+  nameTe: "తెలంగాణ",
+  codePrefix: "TG",
+  bounds: [77.23, 15.83, 81.33, 19.92],
+  center: { lat: 17.9, lng: 79.3 },
+  zoom: 7,
+};
+
+export const TG_DISTRICTS: DistrictSeed[] = [
+  { code: "TG-HYD", nameEn: "Hyderabad", nameTe: "హైదరాబాద్" },
+  { code: "TG-WGL", nameEn: "Hanumakonda", nameTe: "హనుమకొండ" },
+];
+
+export const TG_STOPS: StopSeed[] = [
+  { code: "TG-MGBS", nameEn: "Hyderabad MGBS", nameTe: "హైదరాబాద్ ఎంజీబీఎస్", districtCode: "TG-HYD", lat: 17.3786, lng: 78.4833, isBusStand: true },
+  { code: "TG-HNK", nameEn: "Hanumakonda Bus Stand", nameTe: "హనుమకొండ బస్ స్టాండ్", districtCode: "TG-WGL", lat: 18.0072, lng: 79.5582, isBusStand: true },
+];
+
+export const TG_DEPOTS: DepotSeed[] = [
+  { code: "D-TG-HYD", nameEn: "Hyderabad depot", nameTe: "హైదరాబాద్ డిపో", districtCode: "TG-HYD", busStandCode: "TG-MGBS", busCount: 0 },
+  { code: "D-TG-WGL", nameEn: "Hanumakonda depot", nameTe: "హనుమకొండ డిపో", districtCode: "TG-WGL", busStandCode: "TG-HNK", busCount: 0 },
+];

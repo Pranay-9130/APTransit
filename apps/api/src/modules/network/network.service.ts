@@ -7,6 +7,7 @@ import {
   type BusStandRouteDto,
   type DistrictDto,
   formatIstDate,
+  type StateDto,
   formatIstTime,
   localTimeToUtc,
   type PlaceDto,
@@ -36,13 +37,10 @@ export class NetworkService {
   private readonly placesCache = new TtlCache<PlaceDto[]>(CACHE_TTL_MS);
   private readonly districtsCache = new TtlCache<DistrictDto[]>(CACHE_TTL_MS, 1);
   private readonly stopsCache = new TtlCache<Required<StopSearchRow>[]>(CACHE_TTL_MS, 1);
+  private readonly statesCache = new TtlCache<StateDto[]>(CACHE_TTL_MS, 1);
   private readonly settingsCache = new TtlCache<number>(CACHE_TTL_MS, 50);
 
-  invalidateAdminChanges(): void {
-    this.placesCache.clear();
-    this.districtsCache.clear();
-    this.settingsCache.clear();
-  }
+  invalidateAdminChanges(): void { this.placesCache.clear(); this.districtsCache.clear(); this.statesCache.clear(); this.stopsCache.clear(); this.settingsCache.clear(); }
 
   constructor(
     private readonly repo: NetworkRepository,
@@ -69,7 +67,7 @@ export class NetworkService {
     });
   }
 
-  /** D-034: the stops nearest a point, for the map picker and "use my location". */
+  /** D-042: the stops nearest a point, for the map picker and "use my location". */
   async nearbyPlaces({ lat, lng, limit }: PlacesNearbyQuery): Promise<NearbyPlaceDto[]> {
     const stops = await this.stopsCache.getOrLoad("all", () => this.repo.allStops());
     return stops
@@ -86,6 +84,10 @@ export class NetworkService {
       }))
       .sort((a, b) => a.distanceKm - b.distanceKm)
       .slice(0, limit);
+  }
+
+  states(): Promise<StateDto[]> {
+    return this.statesCache.getOrLoad("all", () => this.repo.states());
   }
 
   districts(): Promise<DistrictDto[]> {
@@ -232,7 +234,7 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 }
 
 /**
- * D-034 service fit: a journey to or from a village stop lists only the services that stop in
+ * D-042 service fit: a journey to or from a village stop lists only the services that stop in
  * villages (VILLAGE_SERVICE_TYPES) when there are any, so Kurnool to Orvakal shows village buses and
  * not the express that passes through. A village served only by express buses still gets them.
  */

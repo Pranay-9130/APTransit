@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useState } from "react";
 import { z } from "zod";
@@ -166,6 +167,9 @@ export default function PoliciesClient() {
           <h1 className="text-h1 font-bold">{t("policiesTitle")}</h1>
         </div>
         <p className="text-muted">{t("policiesDesc")}</p>
+        <Button asChild variant="secondary" className="mt-3">
+          <Link href="/admin/policies/pass-types">{t("passTypes.openLink")}</Link>
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

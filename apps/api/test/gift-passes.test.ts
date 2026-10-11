@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PassDto, TicketDto } from "@aptransit/shared";
+import { PassDto, PLATFORM_TIME_ZONE, TicketDto } from "@aptransit/shared";
 import { getQueueToken } from "@nestjs/bullmq";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
@@ -38,6 +38,8 @@ const ids = {
   weekly: "passtypeweekly01",
   monthly: "passtypemonthly1",
   free: "passtypefree0001",
+  school: "passtypeschool01",
+  day: "passtypeday00001",
 };
 
 const layout = {
@@ -164,39 +166,12 @@ function freshTables(): Tables {
       },
     ],
     passType: [
-      {
-        id: ids.weekly,
-        kind: "WEEKLY",
-        nameEn: "Weekly Pass",
-        nameTe: "Weekly te",
-        durationDays: 7,
-        pricePaise: 45_000,
-        eligibleServiceTypes: STANDARD,
-        scheme: null,
-        isActive: true,
-      },
-      {
-        id: ids.monthly,
-        kind: "MONTHLY",
-        nameEn: "Monthly Pass",
-        nameTe: "Monthly te",
-        durationDays: 30,
-        pricePaise: 160_000,
-        eligibleServiceTypes: STANDARD,
-        scheme: null,
-        isActive: true,
-      },
-      {
-        id: ids.free,
-        kind: "FREE_TRAVEL",
-        nameEn: "Free Travel Pass",
-        nameTe: "Free te",
-        durationDays: 365,
-        pricePaise: 0,
-        eligibleServiceTypes: STANDARD,
-        scheme: "STREE_SHAKTI",
-        isActive: true,
-      },
+      { id: ids.weekly, kind: "WEEKLY", nameEn: "Weekly Pass", nameTe: "Weekly te", durationDays: 7, pricePaise: 45_000, eligibleServiceTypes: STANDARD, scheme: null, validityMode: "ROLLING_DAYS", groupSize: 1, routeRestricted: false, isDemo: false, sortOrder: 0, isActive: true },
+      { id: ids.monthly, kind: "MONTHLY", nameEn: "Monthly Pass", nameTe: "Monthly te", durationDays: 30, pricePaise: 160_000, eligibleServiceTypes: STANDARD, scheme: null, validityMode: "ROLLING_DAYS", groupSize: 1, routeRestricted: false, isDemo: false, sortOrder: 0, isActive: true },
+      { id: ids.free, kind: "FREE_TRAVEL", nameEn: "Free Travel Pass", nameTe: "Free te", durationDays: 365, pricePaise: 0, eligibleServiceTypes: STANDARD, scheme: "STREE_SHAKTI", validityMode: "ROLLING_DAYS", groupSize: 1, routeRestricted: false, isDemo: false, sortOrder: 0, isActive: true },
+      // D-036 catalog additions, sorted after the old three
+      { id: ids.day, kind: "DAY", nameEn: "Day Pass", nameTe: "Day te", durationDays: 1, pricePaise: 12_000, eligibleServiceTypes: STANDARD, scheme: null, validityMode: "UNTIL_DAY_END", groupSize: 1, routeRestricted: false, isDemo: true, sortOrder: 1, isActive: true },
+      { id: ids.school, kind: "SCHOOL", nameEn: "School Pass", nameTe: "School te", durationDays: 30, pricePaise: 60_000, eligibleServiceTypes: STANDARD, scheme: "STUDENT", validityMode: "ROLLING_DAYS", groupSize: 1, routeRestricted: true, isDemo: true, sortOrder: 2, isActive: true },
     ],
     setting: [],
     ticket: [
@@ -282,6 +257,8 @@ describe("Gifting, passes and free travel (Day 8)", () => {
       },
       pass: {
         passType: (p) => byId("passType", p.passTypeId),
+        homeStop: (p) => byId("stop", p.homeStopId),
+        destStop: (p) => byId("stop", p.destStopId),
         eligibilityCheck: (p) => byId("eligibilityCheck", p.eligibilityCheckId),
         user: (p) => byId("user", p.userId),
       },
@@ -451,7 +428,54 @@ describe("Gifting, passes and free travel (Day 8)", () => {
   describe("passes", () => {
     it("lists pass types publicly", async () => {
       const res = await request(app.getHttpServer()).get("/api/v1/pass-types").expect(200);
-      expect(res.body.map((t: any) => t.kind)).toEqual(["FREE_TRAVEL", "WEEKLY", "MONTHLY"]);
+      expect(res.body.map((t: any) => t.kind)).toEqual(["FREE_TRAVEL", "WEEKLY", "MONTHLY", "DAY", "SCHOOL"]);
+      expect(res.body.find((t: any) => t.kind === "DAY")).toMatchObject({ validityMode: "UNTIL_DAY_END", isDemo: true, groupSize: 1 });
+    });
+
+    it("a DAY pass bought now and activated runs to 23:59:59 IST today, priced from the pass, not the type", async () => {
+      const created = PassDto.parse((await as("ravi").post("/passes", { passTypeId: ids.day }).expect(201)).body);
+      expect(created).toMatchObject({ pricePaise: 12_000, validityMode: "UNTIL_DAY_END", groupSize: 1, homeStop: null });
+      // An admin price change after purchase never reaches the sold pass (D-036)
+      tables.passType!.find((t) => t.id === ids.day)!.pricePaise = 99_900;
+      const order = await as("ravi").post("/payments/orders", { passId: created.id }).expect(200);
+      expect(order.body.amountPaise).toBe(12_000);
+      await as("ravi").post("/payments/test/complete", { orderId: order.body.orderId }).expect(200);
+      const active = PassDto.parse((await as("ravi").post(`/passes/${created.id}/activate`).expect(200)).body);
+      const until = new Date(active.validUntil!);
+      expect(new Intl.DateTimeFormat("en-GB", { timeZone: PLATFORM_TIME_ZONE, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(until)).toBe("23:59:59");
+      expect(until.getTime() - Date.now()).toBeLessThanOrEqual(24 * 3600_000);
+    });
+
+    describe("school pass (D-036)", () => {
+      const student = { consent: true, declaration: { isStudent: true, institutionName: "Govt Junior College, Kurnool" } };
+
+      it("needs a STUDENT check: never stores the institution, refuses extra fields", async () => {
+        await as("lakshmi").post("/passes", { passTypeId: ids.school, homeStopId: ids.knl, destStopId: ids.vja }).expect(422);
+        await as("lakshmi").post("/eligibility/student", { ...student, studentIdNumber: "S123" }).expect(400);
+        const no = await as("lakshmi").post("/eligibility/student", { ...student, declaration: { isStudent: false, institutionName: "X College" } }).expect(200);
+        expect(no.body).toMatchObject({ scheme: "STUDENT", result: "NOT_ELIGIBLE", reasonCode: "NOT_A_STUDENT" });
+        const yes = await as("lakshmi").post("/eligibility/student", student).expect(200);
+        expect(yes.body).toMatchObject({ scheme: "STUDENT", result: "ELIGIBLE", reasonCode: null });
+        expect(JSON.stringify(tables.eligibilityCheck)).not.toContain("Junior College");
+        expect(JSON.stringify(tables.auditLog)).not.toContain("Junior College");
+      });
+
+      it("needs both stops, then copies them onto the pass", async () => {
+        await as("lakshmi").post("/eligibility/student", student).expect(200);
+        await as("lakshmi").post("/passes", { passTypeId: ids.school }).expect(400);
+        await as("lakshmi").post("/passes", { passTypeId: ids.school, homeStopId: ids.knl }).expect(400);
+        await as("lakshmi").post("/passes", { passTypeId: ids.school, homeStopId: ids.knl, destStopId: ids.knl }).expect(400);
+        await as("lakshmi").post("/passes", { passTypeId: ids.weekly, homeStopId: ids.knl, destStopId: ids.vja }).expect(400);
+        const created = PassDto.parse(
+          (await as("lakshmi").post("/passes", { passTypeId: ids.school, homeStopId: ids.knl, destStopId: ids.vja }).expect(201)).body,
+        );
+        expect(created).toMatchObject({
+          status: "PENDING_PAYMENT",
+          pricePaise: 60_000,
+          homeStop: { id: ids.knl, nameEn: "Kurnool" },
+          destStop: { id: ids.vja, nameEn: "Vijayawada" },
+        });
+      });
     });
 
     it("buys a weekly pass with the fake payment, activates it, and refuses a second active weekly pass", async () => {

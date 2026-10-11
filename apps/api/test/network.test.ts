@@ -7,6 +7,7 @@ import {
   PlacesSearchResponse,
   RouteDto,
   SearchTripsResponse,
+  StatesResponse,
   TimetableDto,
 } from "@aptransit/shared";
 import type { NestExpressApplication } from "@nestjs/platform-express";
@@ -18,6 +19,7 @@ import { configureHttpApp } from "../src/http-app";
 import { NetworkRepository } from "../src/modules/network/network.repository";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { RedisService } from "../src/redis/redis.service";
+import { AP_STATE_ID } from "../prisma/seed-data";
 import { busStandId, districtId, FakeNetworkRepository, routeId, stopId } from "./network-fixture";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -119,7 +121,7 @@ describe("Network and search endpoints (docs/06, Day 4)", () => {
     });
   });
 
-  it("GET /places/nearby lists the closest stops first (D-034)", async () => {
+  it("GET /places/nearby lists the closest stops first (D-042)", async () => {
     const res = await get("/places/nearby?lat=15.67&lng=78.11&limit=3");
     expect(res.status).toBe(200);
     expect(res.body[0]).toMatchObject({ id: stopId("ORV"), distanceKm: 0 });
@@ -134,7 +136,16 @@ describe("Network and search endpoints (docs/06, Day 4)", () => {
       const districts = DistrictsResponse.parse(res.body);
       expect(districts).toHaveLength(12);
       expect(districts.find((d) => d.code === "NDL")?.busStandCount).toBe(2);
+      expect(districts.every((d) => d.stateId === AP_STATE_ID)).toBe(true);
       expect(res.headers["x-ratelimit-limit"]).toBe("120");
+    });
+
+    it("lists states with their map view, public (D-034)", async () => {
+      const res = await get("/states");
+      expect(res.status).toBe(200);
+      expect(StatesResponse.parse(res.body)).toEqual([
+        expect.objectContaining({ id: AP_STATE_ID, code: "AP", bounds: [76.7, 12.6, 84.8, 19.95], center: { lat: 16, lng: 78 }, zoom: 7 }),
+      ]);
     });
 
     it("lists bus stands of a district with route counts", async () => {

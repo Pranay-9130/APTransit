@@ -9,6 +9,7 @@ import {
   PublicId,
   type RouteDto,
   SearchTripsQuery,
+  type StateDto,
   type TimetableDto,
   TimetableQuery,
   type TripSummaryDto,
@@ -42,6 +43,12 @@ export class NetworkController {
     @Query(new ZodValidationPipe(PlacesNearbyQuery)) query: PlacesNearbyQuery,
   ): Promise<NearbyPlaceDto[]> {
     return this.network.nearbyPlaces(query);
+  }
+
+  /** D-034: active states with their map view, for the gov state picker and maps. */
+  @Get("states")
+  states(): Promise<StateDto[]> {
+    return this.network.states();
   }
 
   @Get("districts")

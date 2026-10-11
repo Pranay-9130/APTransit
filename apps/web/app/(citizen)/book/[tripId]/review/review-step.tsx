@@ -254,7 +254,7 @@ export function ReviewStep({ tripId, bookingId }: { tripId: string; bookingId?: 
                   count: booking.passengers.length,
                   fare: formatMoney(fare.totalPaise, locale),
                 })}
-                {/* D-034 group ticket: children under CHILD_MAX_AGE pay half */}
+                {/* D-042 group ticket: children under CHILD_MAX_AGE pay half */}
                 {booking.passengers.some((p) => passengerCategory(p.age) === "CHILD") ? (
                   <span className="block">
                     {t("book.review.group", {
