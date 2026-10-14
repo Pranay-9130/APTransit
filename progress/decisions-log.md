@@ -373,6 +373,14 @@ The only way to change a locked doc in `docs/`. Add an entry, agree at the daily
 - **Decision:** Google Identity Services button on `/login` (popup). `POST /auth/google { credential }` verifies the ID token with Google tokeninfo (no new dependency), checks aud, issuer, expiry and verified email, finds or creates the user by email, issues the normal session. Optional env `GOOGLE_CLIENT_ID` (API) and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (web); unset hides the button and the API answers 403. CSP allows accounts.google.com/gsi. 10 per IP per minute.
 - **Status:** Built. Needs a Google Cloud OAuth client id (docs/15) before it shows.
 
+### D-044: Remove local bus seat booking
+- **Date:** 2026-10-14
+- **Raised by:** Product owner
+- **Docs affected:** 06, 07, 11
+- **Question:** The current locked rules allow reserved seat booking for every service type and do not define a local bus category. Confirm which service types are local. The likely choices are PALLEVELUGU, ULTRA_PALLEVELUGU, CITY_ORDINARY and METRO_EXPRESS, or only CITY_ORDINARY and METRO_EXPRESS. Also confirm whether the restriction includes the free reserved seat flow, and whether a direct `/book/:tripId` visit should show an explanatory unavailable state or return not found.
+- **Proposed enforcement after confirmation:** Hide booking actions for confirmed local service types, guard every paid and free booking screen, reject `POST /bookings` on the server before creating holds, keep search, route, schedule and fare reads unchanged, and add web and API regression tests. Shared booking services and tables remain in place for other services.
+- **Status:** Owner confirmed on 2026-10-14 that local means CITY_ORDINARY and METRO_EXPRESS, and that paid and free-travel reserved-seat booking are both blocked. Implemented in code and tests. Locked docs still need the other dev's agreement and a separate docs update.
+
 ## Parked (ideas outside the 20 day scope)
 
 | Idea | Raised by | Plan sec |
